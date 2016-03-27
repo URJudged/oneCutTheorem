@@ -18,7 +18,7 @@ body {
 }
 #c1c {
   position:relative;
-  flex: 1;
+  flex: 3;
   min-width: 200px;
   overflow: scroll;
 }
@@ -28,8 +28,8 @@ body {
   max-width:800px;
 }
 #info {
-  flex: initial;
-  width:400px;
+  flex: 2;
+  max-width:400px;
   min-width: 200px;
   height: 100%;
   overflow: scroll;
@@ -54,8 +54,24 @@ body {
   top:10px;
   left:10px;
   right:10px;
+  pointer-events:none;
 }
 
+@media (max-width:500px){
+  #displays{
+    display:block;
+    overflow:scroll;
+  }
+  #info{
+    max-width:none;
+    width:100%;
+    height:auto;
+    overflow:auto;
+  }
+  #c1c {
+    overflow:auto;
+  }
+}
 @media print {
   #info, .helptext {
     display:none;
