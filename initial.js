@@ -1,3 +1,8 @@
+
+function determinant(a,b,c,d){
+  return a*d - b*c;
+}
+
 function intersect_edges(a1,a2,b1,b2){
   // s a1x + (1-s) a2x = t b1x + (1-t) a2x
   var a = a1[0];
@@ -44,12 +49,17 @@ function to_unit(v){
 	return numeric.div(v, numeric.norm2(v));
 }
 
-function motorcycleGraph(poly){
+function motorcycleGraph(poly, reversed){
+	// Compute the motorcycle graph
+	if(reversed){
+		poly = poly.slice();
+		poly.reverse();
+	}
+
 	// Set up the graph structure
 	var graph_verts = [];
 	var graph_edges = [];
 
-	// Compute the (interior/exterior) motorcycle graph for a (ccw/cw) polygon
 	var walls = [];
 	for (var i = 0; i < poly.length; i++) {
 		// add graph edge
@@ -58,11 +68,11 @@ function motorcycleGraph(poly){
 		var v1 = poly[i];
 		var v2 = poly[(i+1) % poly.length];
 		walls.push({
-			a:v_1,
-			b:v_2,
+			a:v1,
+			b:v2,
 			segments:[{
 				t_start: 0,
-				p_end: 1,
+				t_end: 1,
 				edge: i
 			}],
 		});
@@ -75,23 +85,27 @@ function motorcycleGraph(poly){
 		var v1 = poly[i];
 		var v2 = poly[(i+1) % poly.length];
 
-		var a = to_unit(numeric.sub(v1,v0));
-		var b = to_unit(numeric.sub(v1,v2));
+		var b = to_unit(numeric.sub(v0,v1));
+		var a = to_unit(numeric.sub(v2,v1));
 
 		var angle_between = vector_angle(a,b);
+		var n_angle = angle_between;
+		if(n_angle < 0) n_angle += 2*Math.PI;
 
-		var move_dir = to_unit(rotate(a, angle_between/2));
-		var move_vel = 1/Math.cos((angle_between-Math.pi)/2);
-		var move_vec = numeric.mul(motor_dir, motor_vel);
+		var move_dir = to_unit(rotate(a, n_angle/2));
+		var move_vel = 1/Math.cos((n_angle-Math.PI)/2);
+		var move_vec = numeric.mul(move_dir, move_vel);
 
-		if(angle_between >= Math.PI){
+		// console.log({ang:angle_between, a:a,b:b, dir:move_dir, vel:move_vel});
+
+		if(angle_between > 0){
 			// Convex vertex
 			graph_verts.push({
 				type:'convex',
 				pos: v1.slice(),
 				vel: move_vec,
 			});
-		} else if (angle_between <= Math.PI) {
+		} else if (angle_between < 0) {
 			// Reflex vertex
 			graph_verts.push({
 				type:'reflex',
@@ -108,6 +122,7 @@ function motorcycleGraph(poly){
 			});
 		} else{
 			// abandon all hope
+			console.error("abandon all hope");
 			return null;
 		}
 	}
@@ -117,7 +132,7 @@ function motorcycleGraph(poly){
 	for (var i = 0; i < motorcycles.length; i++) {
 		var m = motorcycles[i];
 		for (var j = 0; j < walls.length; j++) {
-			var intersect = intersect_edges(m.pos, numeric.add(m.pos, m.vel), wall[j].a, wall[j].b);
+			var intersect = intersect_edges(m.pos, numeric.add(m.pos, m.vel), walls[j].a, walls[j].b);
 			if(intersect.a > 0 && intersect.b >= 0 && intersect.b <= 1 ){
 				// This motorcycle hit a wall
 				collisions.push({
@@ -145,7 +160,7 @@ function motorcycleGraph(poly){
 						crashee:i,
 						crashee_time: intersect.a,
 					});
-				} else if(intersect.b > intersect.a) {
+				} else if(intersect.b < intersect.a) {
 					// m1 is the crasher
 					collisions.push({
 						t:intersect.a,
@@ -157,6 +172,7 @@ function motorcycleGraph(poly){
 					});
 				}  else{
 					// abandon all hope
+					console.error("abandon all hope");
 					return null;
 				}
 			}
@@ -241,12 +257,13 @@ function motorcycleGraph(poly){
 
 			if(!help_insert_segment(evt,new_vert_idx,crashee)){
 				// abandon all hope
+				console.error("abandon all hope");
 				return null;
 			}
 		} else {
 			// The crashing motorcycle hit another motorcycle trace
-			var crashee = motrocycles[evt.crashee];
-			if(crashee.dies <= time){
+			var crashee = motorcycles[evt.crashee];
+			if(crashee.dies <= evt.crashee_time){
 				// The crashee motorcycle died before getting here, so
 				// we are good to go
 				continue;
@@ -288,6 +305,7 @@ function motorcycleGraph(poly){
 				// We hit an existing fixed segment
 				if(!help_insert_segment(evt,new_vert_idx,crashee)){
 					// abandon all hope
+					console.error("abandon all hope");
 					return null;
 				}
 			}
@@ -297,6 +315,19 @@ function motorcycleGraph(poly){
 	// At this point, we have created the full motorcycle graph
 	var clean_edges = graph_edges.filter(function(x){return x !== null;});
 	return [graph_verts, clean_edges];
+}
+
+function doubleMotorcycleGraph(poly){
+	var g1 = motorcycleGraph(poly, false);
+	var g2 = motorcycleGraph(poly, true);
+	var increment = g1[0].length;
+	var verts = g1[0].concat(g2[0]);
+	var edges = g1[1].slice();
+	for (var i = 0; i < g2[1].length; i++) {
+		var edge = g2[1][i];
+		edges.push([edge[0]+increment, edge[1]+increment]);
+	}
+	return [verts,edges];
 }
 
 function getCollapseTime(edge) {
@@ -340,7 +371,7 @@ function findStraightSkeleton(poly) {
 			case "switch":
 				// If v (what is v?) was reflex, make it moving steiner
 				break;
-			case default:
+			default:
 				// Remove the edge
 		}
 	}
