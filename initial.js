@@ -50,7 +50,7 @@ function to_unit(v){
 	return numeric.div(v, numeric.norm2(v));
 }
 
-function motorcycleGraph(poly, reversed){
+function motorcycleGraph(poly, reversed, orig_verts, orig_edges){
 	// Compute the motorcycle graph
 	if(reversed){
 		poly = poly.slice();
@@ -58,8 +58,8 @@ function motorcycleGraph(poly, reversed){
 	}
 
 	// Set up the graph structure
-	var graph_verts = [];
-	var graph_edges = [];
+	var graph_verts = orig_verts || [];
+	var graph_edges = orig_edges || [];
 
 	var walls = [];
 	for (var i = 0; i < poly.length; i++) {
@@ -105,6 +105,7 @@ function motorcycleGraph(poly, reversed){
 				type:'convex',
 				pos: v1.slice(),
 				vel: move_vec,
+				adjacent: [i, (i-1+poly.length)%poly.length],
 			});
 		} else if (angle_between < 0) {
 			// Reflex vertex
@@ -112,6 +113,7 @@ function motorcycleGraph(poly, reversed){
 				type:'reflex',
 				pos: v1.slice(),
 				vel: move_vec,
+				adjacent: [i, (i-1+poly.length)%poly.length],
 			});
 			motorcycles.push({
 				pos:v1.slice(),
@@ -195,6 +197,12 @@ function motorcycleGraph(poly, reversed){
 				// Add new edges
 				graph_edges.push([graph_edges[seg.edge][0], new_vert_idx]);
 				graph_edges.push([new_vert_idx, graph_edges[seg.edge][1]]);
+				// Reconfigure adjacent
+				var adj1 = graph_verts[graph_edges[seg.edge][0]].adjacent;
+				adj1.splice(adj1.indexOf(seg.edge),1,graph_edges.length-1);
+				var adj2 = graph_verts[graph_edges[seg.edge][1]].adjacent;
+				adj2.splice(adj2.indexOf(seg.edge),1,graph_edges.length-2);
+				graph_verts[new_vert_idx].adjacent.push(graph_edges.length-1,graph_edges.length-2);
 				// Remove the old edge
 				graph_edges[seg.edge] = null;
 				// Create new segments
@@ -241,6 +249,7 @@ function motorcycleGraph(poly, reversed){
 				type:'moving_steiner',
 				pos: evt.pos,
 				vel: new_vel,
+				adjacent: [graph_edges.length],
 			};
 
 			// Add it appropriately
@@ -276,6 +285,7 @@ function motorcycleGraph(poly, reversed){
 				type:'resting_steiner',
 				pos: evt.pos,
 				vel: [0,0],
+				adjacent: [graph_edges.length],
 			};
 
 			// Add it appropriately
@@ -294,7 +304,10 @@ function motorcycleGraph(poly, reversed){
 			if(evt.crashee_time > crashee.last_time){
 				// We hit the 'active' segment of the crashee
 				// Add a new fixed segment
+				vertex.adjacent.push(graph_edges.length);
+				graph_verts[crashee.last_vert].adjacent.push(graph_edges.length);
 				graph_edges.push([crashee.last_vert, new_vert_idx]);
+
 				crashee.segments.push({
 					t_start: crashee.last_time,
 					t_end: time,
@@ -325,6 +338,7 @@ function motorcycleGraph(poly, reversed){
 				type:'infinity',
 				pos: move_pos(m.pos, m.vel, 10000000),
 				vel: m.vel,
+				adjacent: [graph_edges.length],
 			};
 			// Add it appropriately
 			graph_verts.push(vertex);
@@ -337,25 +351,24 @@ function motorcycleGraph(poly, reversed){
 		// Connect all infinities together
 		var first = infinities[i];
 		var second = infinities[(i+1) % infinities.length];
+		graph_verts[first].adjacent.push(graph_edges.length);
+		graph_verts[second].adjacent.push(graph_edges.length);
 		graph_edges.push([first, second]);
 	}
 
 	// At this point, we have created the full motorcycle graph
-	var clean_edges = graph_edges.filter(function(x){return x !== null;});
+	// var clean_edges = graph_edges.filter(function(x){return x !== null;});
 	return [graph_verts, clean_edges];
 }
 
 function doubleMotorcycleGraph(poly){
-	var g1 = motorcycleGraph(poly, false);
-	var g2 = motorcycleGraph(poly, true);
-	var increment = g1[0].length;
-	var verts = g1[0].concat(g2[0]);
-	var edges = g1[1].slice();
-	for (var i = 0; i < g2[1].length; i++) {
-		var edge = g2[1][i];
-		edges.push([edge[0]+increment, edge[1]+increment]);
-	}
-	return [verts,edges];
+	var wStarVerts = [];
+	var wStarEdges = [];
+	motorcycle_graph(poly, false, wStarVerts, wStarEdges);
+	var reversed_start_v = wStarVerts.length;
+	var reversed_start_e = wStarEdges.length;
+	motorcycle_graph(poly, true, wStarVerts, wStarEdges);
+	return [wStarVerts,wStarEdges];
 }
 
 function getCollapseTime(edge) {
@@ -364,21 +377,55 @@ function getCollapseTime(edge) {
 }
 
 function findStraightSkeleton(poly) {
-	var wStar = motorcycle_graph(poly);
-	var vertices = wStar[0];
-	var edges = wStar[1];
+	var wStarVerts = [];
+	var wStarEdges = [];
+	motorcycle_graph(poly, false, wStarVerts, wStarEdges);
+	var reversed_start_v = wStarVerts.length;
+	var reversed_start_e = wStarEdges.length;
+	motorcycle_graph(poly, true, wStarVerts, wStarEdges);
+
 	var ss = []; // The skeleton is represented as a list of polygons
+	for (var i = 0; i < poly.length; i++) {
+		var v1 = poly[i];
+		var v2 = poly[(i+1) % poly.length];
+		var face = {
+			source: i,
+			direction: 'interior',
+			vertices: [v1, v2],
+			adjacent_faces: [i+poly.length],
+		};
+		var wSv1 = wStarVerts[i];
+		var wSv2 = wStarVerts[(i+1) % poly.length];
+
+		wSv1.face_right = face;
+		wSv2.face_left = face;
+	}
+	for (var i = 0; i < poly.length; i++) {
+		var v1 = poly[i];
+		var v2 = poly[(i+1) % poly.length];
+		var face = {
+			source: i,
+			direction: 'exterior',
+			vertices: [v2, v1],
+			adjacent_faces: [i-poly.length],
+		};
+		var wSv2 = wStarVerts[reversed_start_v + (i+1) % poly.length];
+		var wSv1 = wStarVerts[reversed_start_v + i];
+
+		wSv2.face_right = face;
+		wSv1.face_left = face;
+	}
 
 	function getCollapseTime(edge) {
-		var v0 = wStar[edge[0]];
-		var v1 = wStar[edge[1]];
+		var v0 = wStarVerts[edge[0]];
+		var v1 = wStarVerts[edge[1]];
 		var vel0 = v0.vel;
 		var vel1 = v1.vel;
 		
-		if (vel0 == 0) {
-			return 
-		} else if(vel1 == 0) {
-			return
+		if (eq(vel0,[0,0])) {
+			return numeric.norm2(numeric.sub(v1,v0))/numeric.norm2(vel1);
+		} else if(eq(vel1,[0,0])) {
+			return numeric.norm2(numeric.sub(v1,v0))/numeric.norm2(vel0);
 		} else {
 			return intersect_edges(v0, numeric.add(v0, vel0), v1, numeric.add(v1, vel1)).a;
 		}
@@ -397,14 +444,17 @@ function findStraightSkeleton(poly) {
 		var v0 = wStar[edgeToHandle[0]];
 		var v1 = wStar[edgeToHandle[1]];
 
+		if(v0.type > v1.type){
+			var tmp = v0;
+			v0 = v1;
+			v1 = tmp;
+		}
+
 		// Edge event
 		if (v0.type == "convex" && v1.type == "convex") {
 
 		}
 		// Split events
-		else if (v0.type == "reflex" && v1.type == "moving_steiner") {
-
-		}
 		else if (v0.type == "moving_steiner" && v1.type == "reflex") {
 
 		}
@@ -412,26 +462,14 @@ function findStraightSkeleton(poly) {
 		else if (v0.type == "reflex" && v1.type == "resting_steiner") {
 
 		}
-		else if (v0.type == "resting_steiner" && v1.type == "reflex") {
-
-		}
 		else if (v0.type == "moving_steiner" && v1.type == "resting_steiner") {
-
-		}
-		else if (v0.type == "resting_steiner" && v1.type == "moving_steiner") {
 
 		}
 		// Switch events
 		else if (v0.type == "convex" && v1.type == "moving_steiner") {
 
 		}
-		else if (v0.type == "moving_steiner" && v1.type == "convex") {
-
-		}
 		else if (v0.type == "convex" && v1.type == "reflex") {
-
-		}
-		else if (v0.type == "reflex" && v1.type == "convex") {
 
 		}
 		// Else, two moving steiners
