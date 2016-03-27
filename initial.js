@@ -26,6 +26,7 @@ function vector_angle_old(x1,y1,x2,y2){
   var angle = Math.atan2(cross_z,dot);
   return angle;
 }
+
 function vector_angle(a,b){
   var dot = a[0]*b[0] + a[1]*b[1];
   var cross_z = a[0]*b[1] - a[1]*b[0];
@@ -299,16 +300,26 @@ function motorcycleGraph(poly){
 	return [graph_verts, clean_edges];
 }
 
-function getCollapseTime(edge) {
-	
-	return 1;
-}
-
 function findStraightSkeleton(poly) {
 	var wStar = motorcycle_graph(poly);
 	var vertices = wStar[0];
 	var edges = wStar[1];
 	var ss = []; // The skeleton is represented as a list of polygons
+
+	function getCollapseTime(edge) {
+		var v0 = wStar[edge[0]];
+		var v1 = wStar[edge[1]];
+		var vel0 = v0.vel;
+		var vel1 = v1.vel;
+		
+		if (vel0 == 0) {
+			return 
+		} else if(vel1 == 0) {
+			return
+		} else {
+			return intersect_edges(v0, numeric.add(v0, vel0), v1, numeric.add(v1, vel1)).a;
+		}
+	}
 
 	// Put edges of wStar in a priority queue
 	var pq = new PriorityQueue({comparator: getCollapseTime});
@@ -320,28 +331,49 @@ function findStraightSkeleton(poly) {
 	// Pop an edge, handle its event type, and update the queue
 	while (pq.length != 0) {
 		var edgeToHandle = pq.dequeue();
+		var v0 = wStar[edgeToHandle[0]];
+		var v1 = wStar[edgeToHandle[1]];
 
-		switch(edgeToHandle.type) {
-			case "edge":
-				// Add convex SS arcs
+		// Edge event
+		if (v0.type == "convex" && v1.type == "convex") {
 
-				// Merge vertices
-				// Special case: Check whether triangle collapse
-				break;
-			case "split":
-				// Add reflex SS arc
-				// If left side of edge collapsed, add arcs.
-				// Otherwise, add new convex vertices
-				break;
-			case "start":
-				// Change vertex type to moving steiner
-				// Split edge
-				break;
-			case "switch":
-				// If v (what is v?) was reflex, make it moving steiner
-				break;
-			case default:
-				// Remove the edge
+		}
+		// Split events
+		else if (v0.type == "reflex" && v1.type == "moving_steiner") {
+
+		}
+		else if (v0.type == "moving_steiner" && v1.type == "reflex") {
+
+		}
+		// Start events
+		else if (v0.type == "reflex" && v1.type == "resting_steiner") {
+
+		}
+		else if (v0.type == "resting_steiner" && v1.type == "reflex") {
+
+		}
+		else if (v0.type == "moving_steiner" && v1.type == "resting_steiner") {
+
+		}
+		else if (v0.type == "resting_steiner" && v1.type == "moving_steiner") {
+
+		}
+		// Switch events
+		else if (v0.type == "convex" && v1.type == "moving_steiner") {
+
+		}
+		else if (v0.type == "moving_steiner" && v1.type == "convex") {
+
+		}
+		else if (v0.type == "convex" && v1.type == "reflex") {
+
+		}
+		else if (v0.type == "reflex" && v1.type == "convex") {
+
+		}
+		// Else, two moving steiners
+		else {
+			
 		}
 	}
 
