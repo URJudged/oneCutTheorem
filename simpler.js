@@ -442,7 +442,7 @@ function findPerpendiculars(poly, straightSkeleton) {
             // While not going to infinity, keep making angle bisectors
             while (pNew >= 0){
                 polygon = straightSkeleton[pNew];
-                var slope = findBisectorSlope(edges[1],edges[0],intersectEdge[0]);
+                var slope = findBisectorSlope(edge[1],edge[0],intersectEdge[0]);
 
 
                 for (var i = 0; i < polygon.vertices.length; i++) {
