@@ -97,7 +97,7 @@ function deep_flatten(arr){
             acc.push(arr[i]);
         }
     }
-    console.log(acc);
+    // console.log(acc);
     return acc;
 }
 function pair(arr){
@@ -107,6 +107,8 @@ function pair(arr){
     }
     return acc
 }
+
+var STRAIGHT_SKELETON_DEBUG = false;
 
 function build_straight_skeleton(poly){
     var faces = [];
@@ -137,7 +139,7 @@ function build_straight_skeleton(poly){
             source: i,
             direction: 'exterior',
             vertices: [v2, v1, []],
-            adjacent_faces: [i-poly.length, []],
+            adjacent_faces: [i, []],
         };
         face_maps_ext.unshift({
             face:face,
@@ -152,9 +154,17 @@ function build_straight_skeleton(poly){
     face_maps_ext.push(face_maps_ext.shift());
     straight_skeleton_helper(revpoly, face_maps_ext);
 
+
     for (var i = 0; i < faces.length; i++) {
         faces[i].vertices = pair(deep_flatten(faces[i].vertices));
         faces[i].adjacent_faces = deep_flatten(faces[i].adjacent_faces);
+    }
+    if(STRAIGHT_SKELETON_DEBUG){
+        console.group("The full result:");
+        for (var i = 0; i < faces.length; i++) {
+            console.log(i, " with adjacencies ",faces[i].adjacent_faces);
+        }
+        console.groupEnd();
     }
     return faces;
 }
@@ -163,6 +173,14 @@ function straight_skeleton_helper(subpoly, faces){
     // subpoly is a polygon
     // faces is a set of {face:face, insertion:index},
     // corresponding to each side of the polygon
+    if(STRAIGHT_SKELETON_DEBUG){
+        console.group("Running sshelper with ", subpoly.length, " vertices and faces:");
+        for (var i = 0; i < faces.length; i++) {
+            console.log(faces[i].face.idx, " with adjacencies ", JSON.stringify(faces[i].face.adjacent_faces));
+        }
+        console.groupEnd();
+    }
+
     var vertices = [];
     for (var i = 0; i < subpoly.length; i++) {
         var v0 = subpoly[(i+subpoly.length-1) % subpoly.length];
@@ -219,6 +237,7 @@ function straight_skeleton_helper(subpoly, faces){
     }
 
     if(soonest_event_time == Infinity){
+        if(STRAIGHT_SKELETON_DEBUG) console.log("Doing infinity case");
         // console.log("Inf");
         // Nothing intersected! Project to infinity vertices
         for (var i = 0; i < vertices.length; i++) {
@@ -241,12 +260,13 @@ function straight_skeleton_helper(subpoly, faces){
         }
         // Connect the face corresponding to these vertices.
         var collision_pt = vertices[soonest_event.i1].pos;
-        console.log(vertices[soonest_event.i1].pos, vertices[soonest_event.i2].pos);
+        // console.log(vertices[soonest_event.i1].pos, vertices[soonest_event.i2].pos);
         lfobj = faces[(soonest_event.i1-1 + faces.length) % faces.length];
         mfobj = faces[soonest_event.i1];
         rfobj = faces[soonest_event.i2];
 
         if(faces.length == 3){
+            if(STRAIGHT_SKELETON_DEBUG) console.log("Doing triangle contraction case");
             // All faces are contracting!
             lfobj.vert_insertion.push(collision_pt);
             mfobj.vert_insertion.push(collision_pt);
@@ -254,8 +274,9 @@ function straight_skeleton_helper(subpoly, faces){
 
             lfobj.adj_insertion.push(mfobj.face.idx, rfobj.face.idx);
             mfobj.adj_insertion.push(rfobj.face.idx, lfobj.face.idx);
-            mfobj.adj_insertion.push(lfobj.face.idx, mfobj.face.idx);
+            rfobj.adj_insertion.push(lfobj.face.idx, mfobj.face.idx);
         } else{
+            if(STRAIGHT_SKELETON_DEBUG) console.log("Doing merge case on ", soonest_event.i1, " and ", soonest_event.i2);
             // Remove one face
             var lv_rest = [];
             var rv_rest = [];
@@ -293,11 +314,14 @@ function straight_skeleton_helper(subpoly, faces){
                 new_faces.push(faces[i]);
             }
 
+            if(STRAIGHT_SKELETON_DEBUG) console.group("Recursion:");
             straight_skeleton_helper(new_subpoly,new_faces);
+            if(STRAIGHT_SKELETON_DEBUG) console.groupEnd();
         }
     } else if(soonest_event.type == "vert-edge"){
         // Vertex collided with an edge
         // Shift all vertices by soonest_event_time forward.
+        if(STRAIGHT_SKELETON_DEBUG) console.log("Doing split case on ", soonest_event.i, " with ", soonest_event.ei1, " and ", soonest_event.ei2);
         for (var i = 0; i < vertices.length; i++) {
             vertices[i].pos = move_pos(vertices[i].pos, vertices[i].vel, soonest_event_time);
         }
@@ -321,7 +345,7 @@ function straight_skeleton_helper(subpoly, faces){
         var ca_b_rest = [];
         afobj.adj_insertion.push(bfobj.face.idx,aa_rest);
         bfobj.adj_insertion.push(ba_rest,afobj.face.idx);
-        cfobj.adj_insertion.push(cv_a_rest,cv_b_rest);
+        cfobj.adj_insertion.push(ca_a_rest,ca_b_rest);
 
         // Split polygon into two pieces, and create corresponding face accessors
         var new_subpoly_a = [];
@@ -357,7 +381,7 @@ function straight_skeleton_helper(subpoly, faces){
             adj_insertion: ca_b_rest
         });
         new_faces_b.push({
-            face:afobj.face,
+            face:bfobj.face,
             vert_insertion: bv_rest,
             adj_insertion: ba_rest
         });
@@ -367,8 +391,19 @@ function straight_skeleton_helper(subpoly, faces){
         }
 
         // Recurse
+        if(STRAIGHT_SKELETON_DEBUG) console.group("First recursion:");
         straight_skeleton_helper(new_subpoly_a,new_faces_a);
+        if(STRAIGHT_SKELETON_DEBUG) console.groupEnd();
+        if(STRAIGHT_SKELETON_DEBUG) console.group("Second recursion");
         straight_skeleton_helper(new_subpoly_b,new_faces_b);
+        if(STRAIGHT_SKELETON_DEBUG) console.groupEnd();
+    }
+    if(STRAIGHT_SKELETON_DEBUG) {
+        console.group("Finally:");
+        for (var i = 0; i < faces.length; i++) {
+            console.log(faces[i].face.idx, " with adjacencies ", JSON.stringify(faces[i].face.adjacent_faces));
+        }
+        console.groupEnd();
     }
 }
 
