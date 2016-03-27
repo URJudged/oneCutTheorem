@@ -312,6 +312,33 @@ function motorcycleGraph(poly, reversed){
 		}
 	}
 
+	// Clean up any infinity motorcycles
+	var infinities = [];
+	for (var i = 0; i < motorcycles.length; i++) {
+		var m = motorcycles[i];
+		if(m.dies == Infinity) {
+			// This motorcycle is still alive!
+			// Create an infinity vertex for it
+			var new_vert_idx = graph_verts.length;
+			var vertex = {
+				type:'infinity',
+				pos: move_pos(m.pos, m.vel, 10000000),
+				vel: m.vel,
+			};
+			// Add it appropriately
+			graph_verts.push(vertex);
+			graph_edges.push([m.last_vert, new_vert_idx]);
+
+			infinities.push(new_vert_idx);
+		}
+	}
+	for (var i = 0; i < infinities.length; i++) {
+		// Connect all infinities together
+		var first = infinities[i];
+		var second = infinities[(i+1) % infinities.length];
+		graph_edges.push([first, second]);
+	}
+
 	// At this point, we have created the full motorcycle graph
 	var clean_edges = graph_edges.filter(function(x){return x !== null;});
 	return [graph_verts, clean_edges];

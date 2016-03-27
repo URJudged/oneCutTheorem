@@ -164,14 +164,14 @@ function get_shifted_pos(pt, time){
   return move_pos(pt.pos, pt.vel, time);
 }
 
-function anim(){
+var mousetime = 0;
+document.addEventListener("mousemove",function(evt){
+  mousetime = evt.pageX / width;
   redraw();
-  window.requestAnimationFrame(anim);
-}
-anim();
+});
 
 function redraw(){
-  var time = ((performance.now() / 1000)%1) * 20;
+  var time = mousetime*100;
   polygon_path = polygon_path.data([polygon]);
   polygon_path.exit().remove();
   polygon_path.enter().append("path").attr("class","polygon");
