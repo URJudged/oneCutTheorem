@@ -241,7 +241,7 @@ function straight_skeleton_helper(subpoly, faces){
         // console.log("Inf");
         // Nothing intersected! Project to infinity vertices
         for (var i = 0; i < vertices.length; i++) {
-            vertices[i].pos = move_pos(vertices[i].pos, vertices[i].vel, 100000);
+            vertices[i].pos = move_pos(vertices[i].pos, vertices[i].vel, 1000);
         }
         for (var i = 0; i < vertices.length; i++) {
             var pfobj = faces[(i-1+vertices.length)%vertices.length];
