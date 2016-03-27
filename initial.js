@@ -50,6 +50,17 @@ function to_unit(v){
 	return numeric.div(v, numeric.norm2(v));
 }
 
+function get_bisector_vel(a,b){
+	var angle_between = vector_angle(a,b);
+	var n_angle = angle_between;
+	if(n_angle < 0) n_angle += 2*Math.PI;
+
+	var move_dir = to_unit(rotate(a, n_angle/2));
+	var move_vel = 1/Math.cos((n_angle-Math.PI)/2);
+	var move_vec = numeric.mul(move_dir, move_vel);
+	return move_vec;
+}
+
 function motorcycleGraph(poly, reversed, orig_verts, orig_edges){
 	// Compute the motorcycle graph
 	if(reversed){
@@ -90,12 +101,7 @@ function motorcycleGraph(poly, reversed, orig_verts, orig_edges){
 		var a = to_unit(numeric.sub(v2,v1));
 
 		var angle_between = vector_angle(a,b);
-		var n_angle = angle_between;
-		if(n_angle < 0) n_angle += 2*Math.PI;
-
-		var move_dir = to_unit(rotate(a, n_angle/2));
-		var move_vel = 1/Math.cos((n_angle-Math.PI)/2);
-		var move_vec = numeric.mul(move_dir, move_vel);
+		var move_vec = get_bisector_vel(a,b);
 
 		// console.log({ang:angle_between, a:a,b:b, dir:move_dir, vel:move_vel});
 
@@ -376,6 +382,11 @@ function getCollapseTime(edge) {
 	return 1;
 }
 
+function get_other_vert(vidx,e){
+	if(e[0]==vidx) return e[1];
+	else return e[0];
+}
+
 function findStraightSkeleton(poly) {
 	var wStarVerts = [];
 	var wStarEdges = [];
@@ -457,27 +468,92 @@ function findStraightSkeleton(poly) {
 	while (pq.length != 0) {
 		var edgeToHandle = pq.dequeue();
 		if(wStarEdges[edgeToHandle.i] == null) continue;
-		
-		var v0 = wStar[edgeToHandle.edge[0]];
-		var v1 = wStar[edgeToHandle.edge[1]];
+
+		var v0i = edgeToHandle.edge[0];
+		var v1i = edgeToHandle.edge[1];
 
 		if(v0.type > v1.type){
-			var tmp = v0;
-			v0 = v1;
-			v1 = tmp;
+			var tmp = v0i;
+			v0i = v1i;
+			v1i = tmp;
 		}
+
+		var v0 = wStar[v0i];
+		var v1 = wStar[v1i];
+
 
 		// Edge event
 		if (v0.type == "convex" && v1.type == "convex") {
-			// Create new vertex
+			var v_left, v_right, vli, vri;
+			if(v0.face_front == v1.face_back){
+				v_left = v0;
+				v_right = v1;
+				vli = v0i;
+				vri = v1i;
+			} else {
+				v_left = v1;
+				v_right = v0;
+				vli = v1i;
+				vri = v0i;
+			}
+
+			// Create new vertex and new edges
+			var diff = numeric.sub(v_left.vel,v_right.vel);
+			var ang = (vector_angle(diff, v_left.vel) + Math.PI*2) % (Math.PI*2);
+			var b = to_unit(rotate(diff,2*ang));
+
+			var diff = numeric.sub(v_right.vel,v_left.vel);
+			var ang = (vector_angle(diff, v_right.vel) + Math.PI*2) % (Math.PI*2);
+			var a = to_unit(rotate(diff,2*ang));
+
+			var move_vec = get_bisector_vel(a, b);
+
+			var adjacents = [];
+			for (var i = 0; i < v_left.adjacent.length; i++) {
+				var eidx = v_left.adjacent[i];
+				var e = wStarEdges[eidx];
+				var othervi = e[1-e.indexOf(vli))];
+				if(othervi == vri) continue;
+
+				wStarEdges[eidx] = null;
+				adjacents.push(wStarEdges.length);
+				wStarEdges.push([otheri, wStarVerts.length]);
+			}
+			for (var i = 0; i < v_right.adjacent.length; i++) {
+				var eidx = v_right.adjacent[i];
+				var e = wStarEdges[eidx];
+				var othervi = e[1-e.indexOf(vri))];
+				if(othervi == vli) continue;
+
+				wStarEdges[eidx] = null;
+				adjacents.push(wStarEdges.length);
+				wStarEdges.push([otheri, wStarVerts.length]);
+			}
+
+			var npos = move_pos(v_left.pos, v_left.vel, edgeToHandle.time);
 			var v_new = {
 				type:'convex',
-				pos: move_pos(v0.pos, v0.vel, ,
+				pos: move_pos(npos,numeric.mul(move_vec,-1),edgeToHandle.time),
 				vel: move_vec,
-				adjacent: [i, (i-1+poly.length)%poly.length],
+				adjacent: adjacents,
+				face_front:v_right.face_front,
+				face_back:v_left.face_back,
 			}
+			wStarVerts.push(v_new);
+
 			// Connect faces appropriately
-			
+			var lface = v_left.face_back;
+			var mface = v_left.face_front;
+			var rface = v_right.face_front;
+
+			lface.vertices.push(npos);
+			lface.adjacent_faces.push(mface);
+
+			mface.vertices.push(npos);
+			mface.adjacent_faces.push(rface, lface);
+
+			rface.vertices.unshift(npos);
+			rface.adjacent_faces.unshift(mface);
 		}
 		// Split events
 		else if (v0.type == "moving_steiner" && v1.type == "reflex") {
@@ -485,6 +561,9 @@ function findStraightSkeleton(poly) {
 		}
 		// Start events
 		else if (v0.type == "reflex" && v1.type == "resting_steiner") {
+			// v0 stays the same
+			// v1 becomes a moving steiner vertex
+			
 
 		}
 		else if (v0.type == "moving_steiner" && v1.type == "resting_steiner") {
