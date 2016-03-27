@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<head>
+<meta charset="utf-8">
+<title>Interactive Gallery</title>
+<style>
+
+#help{
+/*  position:absolute;
+  top:0;
+  left:0;
+  right:0;*/
+  text-align: center;
+}
+
+path.polygon {
+  stroke: #000;
+  fill: #eee;
+  line-width: 5px;
+}
+path.polygon.bad {
+  fill: transparent;
+}
+path.graph {
+  stroke: #797;
+  line-width: 4px;
+  pointer-events:none;
+}
+path.guard_vis {
+  stroke: transparent;
+  fill: rgba(255,0,0,0.3);
+  pointer-events:none;
+}
+
+circle.polygon_v {
+  fill: #00F;
+}
+circle.graph_v {
+  /*fill: #F00;*/
+  stroke: #000;
+  line-width:1px;
+  pointer-events:none;
+}
+
+</style>
+</head>
+<body>
+
+<script src="priority-queue.js"></script>
+<script src="//d3js.org/d3.v3.min.js"></script>
+<script type="text/javascript" src="numeric.js"></script>
+<script src="initial.js"></script>
+<script>
+
+var width = 960,
+    height = 500;
+
+var polygon = [[300,300],[341,370],[322,411],[402,436],[296,437],[213,296],[450,170],[563,339],[511,326],[480,381],[433,307]];
+//[[300,300],[450, 170],[600, 310],[450, 450],[400, 290]];
+var polygon_is_good = true;
+
+var motorcycle_graph = null;
+
+//////////////////////////
+
+function dragmove(d,i) {
+  console.log("Drag");
+  d[0] += d3.event.dx;
+  d[1] += d3.event.dy;
+
+  if(d[0]<0) d[0]=0;
+  if(d[0]>width) d[0]=width;
+  if(d[1]<0) d[1]=0;
+  if(d[1]>height) d[1]=height;
+
+  d3.select(this).attr("transform", function(d,i){
+    return "translate(" + d + ")"
+  });
+  update();
+}
+
+function drag_spawnpoly(d,i) {
+  console.log("Start");
+  if(d3.event.sourceEvent.shiftKey){
+    console.log("Drag spawn!");
+    var copy = d.slice();
+    polygon.splice(i,0,copy);
+  }
+  update();
+}
+
+
+var dragpoly = d3.behavior.drag()
+        .on("drag", dragmove)
+        .on("dragstart",drag_spawnpoly);
+
+function click_to_remove(x, sourcearray, min){
+  min = min | 0;
+  x.on("click.to_rem", function(d,i){
+    if (d3.event.defaultPrevented) return;
+    if (sourcearray.length <= min) return;
+    sourcearray.splice(i,1);
+    update();
+  });
+}
+
+var svg = d3.select("body").append("svg")
+    .attr("width", width)
+    .attr("height", height)
+
+var polygon_path = svg.append("g").selectAll("path.polygon");
+var polygon_verts = svg.append("g").selectAll("circle.polygon_v");
+
+var graph_path = svg.append("g").selectAll("path.graph");
+var graph_verts = svg.append("g").selectAll("circle.graph");
+
+update();
+
+function check_simple(poly){
+  // STUB: Should return true if polygon is simple
+  // (doesn't cross itself)
+  for (var i = 0; i < poly.length; i++) {
+    var v1 = poly[i];
+    var v2 = poly[(i+1)%poly.length];
+    var j = 0;
+    if(i==poly.length-1) j=1;
+    for (; j < i-1; j++) {
+      var v3 = poly[j];
+      var v4 = poly[(j+1)%poly.length];
+      var ires = intersect_edges(v1,v2,v3,v4);
+      if(!(ires.a < 0 || ires.a > 1 || ires.b < 0 || ires.b > 1)){
+        return false;
+      }
+    }
+  };
+  return true;
+}
+
+function check_clockwise(poly){
+  var cum_ang = 0;
+  for (var i = 0; i < poly.length; i++) {
+    var v1 = poly[i];
+    var v2 = poly[(i+1)%poly.length];
+    var v3 = poly[(i+2)%poly.length];
+    cum_ang += vector_angle(numeric.sub(v2,v1),numeric.sub(v3,v2));
+  };
+  // console.log(cum_ang);
+  return cum_ang > 0;
+}
+
+function update(){
+  console.log(check_simple(polygon) , check_clockwise(polygon));
+  polygon_is_good = check_simple(polygon) && check_clockwise(polygon);
+  if(polygon_is_good){
+    motorcycle_graph = doubleMotorcycleGraph(polygon);
+  }else{
+    motorcycle_graph = null;
+  }
+
+  redraw();
+}
+
+function get_shifted_pos(pt, time){
+  if(!pt.pos) pt = motorcycle_graph[0][pt];
+  return move_pos(pt.pos, pt.vel, time);
+}
+
+var mousetime = 0;
+document.addEventListener("mousemove",function(evt){
+  mousetime = evt.pageX / width;
+  redraw();
+});
+
+function redraw(){
+  var time = mousetime*100;
+  polygon_path = polygon_path.data([polygon]);
+  polygon_path.exit().remove();
+  polygon_path.enter().append("path").attr("class","polygon");
+  polygon_path.attr("d", poly_d_fn);
+
+  if(polygon_is_good){
+    polygon_path.attr("class", "polygon");
+  }else{
+    polygon_path.attr("class", "polygon bad");
+  }
+
+  if(motorcycle_graph){
+    graph_path = graph_path.data(motorcycle_graph[1]);
+    graph_verts = graph_verts.data(motorcycle_graph[0]);
+  }else{
+    graph_path = graph_path.data([]);
+    graph_verts = graph_verts.data([]);
+  }
+  graph_path.exit().remove();
+  graph_path.enter().append("path").attr("class","graph");
+  graph_path.attr("d", function(d){
+    return "M" + get_shifted_pos(d[0],time) + "L" + get_shifted_pos(d[1],time);
+  });
+  
+  polygon_verts = polygon_verts.data(polygon);
+  polygon_verts.exit().remove();
+  polygon_verts.enter().append("circle");
+  polygon_verts.attr("class","polygon_v")
+      .attr("transform", function(d) { return "translate(" + d + ")"; })
+      .attr("r", 6)
+      .call(dragpoly).call(click_to_remove,polygon,3);
+
+  graph_verts.exit().remove();
+  graph_verts.enter().append("circle");
+  graph_verts.attr("class","graph_v")
+      .attr("transform", function(d) { return "translate(" + get_shifted_pos(d,time) + ")"; })
+      .attr("r", 6)
+      .attr("fill",function(d){
+        return {
+          "convex":"red",
+          "reflex":"orange",
+          "resting_steiner":"green",
+          "moving_steiner":"blue"
+        }[d.type];
+      });
+}
+
+function poly_d_fn(d) {
+  return "M" + d.join("L") + "Z";
+}
+
+</script>
+</body>
+</html>
