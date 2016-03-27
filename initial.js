@@ -420,6 +420,8 @@ function findStraightSkeleton(poly) {
 		ss.push(face);
 	}
 
+	var edgeTime = [];
+
 	function getCollapseTime(edge) {
 		var v0 = wStarVerts[edge[0]];
 		var v1 = wStarVerts[edge[1]];
@@ -435,18 +437,29 @@ function findStraightSkeleton(poly) {
 		}
 	}
 
+	function getTime(obj){
+		return obj.time;
+	}
+
 	// Put edges of wStar in a priority queue
 	var pq = new PriorityQueue({comparator: getCollapseTime});
 
 	for (var i = 0; i < edges.length; i++) {
-		pq.queue(edges[i]);
+		if(edges[i] == null) continue;
+		pq.queue({
+			idx:i,
+			time:getCollapseTime(wStarEdges[i]),
+			edge:wStarEdges[i],
+		});
 	}
 
 	// Pop an edge, handle its event type, and update the queue
 	while (pq.length != 0) {
 		var edgeToHandle = pq.dequeue();
-		var v0 = wStar[edgeToHandle[0]];
-		var v1 = wStar[edgeToHandle[1]];
+		if(wStarEdges[edgeToHandle.i] == null) continue;
+		
+		var v0 = wStar[edgeToHandle.edge[0]];
+		var v1 = wStar[edgeToHandle.edge[1]];
 
 		if(v0.type > v1.type){
 			var tmp = v0;
@@ -456,7 +469,15 @@ function findStraightSkeleton(poly) {
 
 		// Edge event
 		if (v0.type == "convex" && v1.type == "convex") {
-
+			// Create new vertex
+			var v_new = {
+				type:'convex',
+				pos: move_pos(v0.pos, v0.vel, ,
+				vel: move_vec,
+				adjacent: [i, (i-1+poly.length)%poly.length],
+			}
+			// Connect faces appropriately
+			
 		}
 		// Split events
 		else if (v0.type == "moving_steiner" && v1.type == "reflex") {
