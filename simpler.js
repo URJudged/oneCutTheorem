@@ -381,18 +381,24 @@ function findPerpendiculars(poly, straightSkeleton) {
 
     // Go through each polygon of the straight skeleton
     for (var p = 0; p < straightSkeleton.length; p++) {
+        console.log("p=",p);
 
         // Go through vertices of the polygon
         var polygon = straightSkeleton[p];
         for (var v = 2; v < polygon.vertices.length; v++) {
+            console.log("v=",v);
 
             var edge = findPerpEdge([polygon.vertices[0],polygon.vertices[1]], polygon.vertices[v]);
 
             // If the edge doesn't actually intersect with the cut polygon
             if(!verifyIntersect(polygon.vertices[0],polygon.vertices[1],edge[0])) {
+                console.log("Not intersecting");
+                console.log(polygon.vertices[0],polygon.vertices[1],edge[0]);
                 continue;
             }
             output.push(edge);
+            console.log("Perp added");
+            console.log(edge);
 
             var vertex = edge[0];
             var pNew = polygon.adjacent_faces[0];
@@ -496,11 +502,10 @@ function flattenSkeleton(straightSkeleton) {
 function findPerpEdge(edge, vertex) {
     // Input an edge as an array of vertices and a vertex
 
-    // y-y1 = m(x-x1)
-    // -y1/m + x1 = x
 
     // Slope of perpendicular line
     var slope = -(edge[0][0]-edge[1][0]) / (edge[0][1]-edge[1][1]);
+    console.log("perp slope = ", slope)
     return [calculateIntersection(edge[0],edge[1],vertex,slope), vertex]
 
 }
@@ -509,7 +514,7 @@ function calculateIntersection(v0, v1, v2, slope) {
     // Find intersection of line defined by v0 and v1 and line defined by v2 and slope
 
     var slopeEdge = (v0[1]-v1[1]) / (v0[0]-v1[0]);
-    var x = (-1*v0[1]/slopeEdge) + v0[0] - ((-1*v2[1]/slope) + v2[0]);
+    var x = (slopeEdge*v0[0]-v0[1]-slope*v2[0]+v2[1]) / (slopeEdge - slope);
     var y = slope * (x - v2[0]) + v2[1];
     return [x,y];
 }

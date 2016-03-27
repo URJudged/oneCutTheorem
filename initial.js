@@ -630,6 +630,8 @@ function findPerpendiculars(poly, straightSkeleton) {
 
 	// Go through each polygon of the straight skeleton
 	for (var p = 0; p < straightSkeleton.length; p++) {
+		console.log("Going through faces")
+		console.log(p);
 
 		// Go through vertices of the polygon
 		var polygon = straightSkeleton[p];
@@ -639,9 +641,12 @@ function findPerpendiculars(poly, straightSkeleton) {
 
 			// If the edge doesn't actually intersect with the cut polygon
 			if(!verifyIntersect(polygon.vertices[0],polygon.vertices[1],edge[0])) {
+				console.log("Not intersecting");
 				continue;
 			}
 			output.push(edge);
+			console.log("Perp added");
+			console.log(edge);
 
 			var vertex = edge[0];
 			var pNew = polygon.adjacent_faces[0];
