@@ -88,6 +88,8 @@ function vert_edge_intersection(p,e1,e2) {
 
 function straight_skeleton(poly){
     var faces = [];
+    var face_maps_int = [];
+    var face_maps_ext = [];
     for (var i = 0; i < poly.length; i++) {
         var v1 = poly[i];
         var v2 = poly[(i+1) % poly.length];
@@ -99,6 +101,10 @@ function straight_skeleton(poly){
             adjacent_faces: [i+poly.length],
         };
         faces.push(face);
+        face_maps_int.push({
+            face:face,
+            insertion: 2
+        });
     }
     for (var i = 0; i < poly.length; i++) {
         var v1 = poly[i];
@@ -110,14 +116,16 @@ function straight_skeleton(poly){
             vertices: [v2, v1],
             adjacent_faces: [i-poly.length],
         };
+        face_maps_ext.unshift({
+            face:face,
+            insertion: 2
+        });
         faces.push(face);
     }
-    straight_skeleton_helper(poly, faces.slice(0,poly.length));
+    straight_skeleton_helper(poly, face_maps_int);
     var revpoly = poly.slice();
     revpoly.reverse();
-    var revfaces = faces.slice(poly.length)
-    revfaces.reverse();
-    straight_skeleton_helper(revpoly, revfaces);
+    straight_skeleton_helper(revpoly, face_maps_ext);
 
     return faces;
 }
