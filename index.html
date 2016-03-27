@@ -265,8 +265,8 @@ function update(){
   polygon_is_good = check_simple(polygon) && check_clockwise(polygon);
   if(polygon_is_good){
     sskel = build_straight_skeleton(polygon);
-    perps = [];
-    // perps = findPerpendiculars(polygon, sskel);
+    // perps = [];
+    perps = findPerpendiculars(polygon, sskel);
   }else{
     sskel = null;
     perps = null;
