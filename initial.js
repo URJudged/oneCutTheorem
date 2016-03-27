@@ -544,33 +544,162 @@ function findStraightSkeleton(poly) {
 
 function findPerpendiculars(poly, straightSkeleton) {
 	// The straightSkeleton[i] should correspond to edge made up of poly[i] and poly[(i+1)%poly.length]
+	// Do a depth first search to find perpendicular edges
 	// Returns an array of 2 vertex pairs (straight skeleton vertex and vertex on polygon)
 
-	var output = []
+	var output = [];
 
-	for (var i = 0; i < poly.length; i++) {
-		var v0 = poly[i];
-		var v1 = poly[(i+1)%poly.length];
-		var face = straightSkeleton[i]
+	// Go through each polygon of the straight skeleton
+	for (var p = 0; p < straightSkeleton.length; p++) {
+
+		// Go through vertices of the polygon
+		var polygon = straightSkeleton[p];
+		for (var v = 2; v < polygon.vertices.length; v++) {
+
+			var edge = findPerpEdge([polygon.vertices[0],polygon.vertices[1]], polygon.vertices[v]);
+
+			// If the edge doesn't actually intersect with the cut polygon
+			if(!verifyIntersect(polygon.vertices[0],polygon.vertices[1],edge[0])) {
+				continue;
+			}
+			output.push(edge);
+
+			var vertex = edge[0];
+			var pNew = polygon.adjacent_faces[0];
+			var intersectEdge = [polygon.vertices[0],polygon.vertices[1]];
+
+			// While not going to infinity, keep making angle bisectors
+			while (pNew >= 0){
+				polygon = straightSkeleton[pNew];
+				var slope = findBisectorSlope(edges[1],edges[0],intersectEdge[0]);
 
 
-		// Get perpendicular slope
-		var slope = -(v0[0]-v1[0]) / (v0[1]-v1[1]);
+				for (var i = 0; i < polygon.vertices.length; i++) {
+					var intersection = calculateIntersection(polygon.vertices[i],
+						polygon.vertices[(i+1)%polygon.vertices.length],vertex,slope);
 
-
-		// y-y1=m(x-x1)
-		// y-(y1/m)+x1 = m
-		// y+slope*v0[1]+v0[0] = x
-		// y-face[j][1]/slope+face[j][0] = x
-		for (var j = 0; j < face.length; j++) {
-			if (face[j][0] !== v0[0] && face[j][1] !== v0[1] 
-				&&face[j][0] !== v1[0] && face[j][1] !== v1[1]) {
-				var x = (slope * v0[1]) + v0[0] - ((-1*face[j][1]/slope) + face[j][0]);
-				var y = slope * (x - face[j][0]) + face[j][1];
-				output.push([face[j],[x,y]]);
+					if(verifyIntersect(polygon.vertices[i],
+						polygon.vertices[(i+1)%polygon.vertices.length],intersection)) {
+						output.push([intersection,vertex]);
+						vertex = intersection;
+						pNew = polygon.adjacent_faces[i];
+						intersectEdge = [polygon.vertices[i],polygon.vertices[(i+1)%polygon.vertices.length]];
+						break;
+					}
+				}
 			}
 		}
 	}
-
 	return output;
+
+	// var output = []
+
+	// for (var i = 0; i < poly.length; i++) {
+	// 	var v0 = poly[i];
+	// 	var v1 = poly[(i+1)%poly.length];
+	// 	var face = straightSkeleton[i]
+
+
+	// 	// Get perpendicular slope
+	// 	var slope = -(v0[0]-v1[0]) / (v0[1]-v1[1]);
+
+
+	// 	// y-y1=m(x-x1)
+	// 	// y-(y1/m)+x1 = m
+	// 	// y+slope*v0[1]+v0[0] = x
+	// 	// y-face[j][1]/slope+face[j][0] = x
+	// 	for (var j = 0; j < face.length; j++) {
+	// 		if (face[j][0] !== v0[0] && face[j][1] !== v0[1] 
+	// 			&&face[j][0] !== v1[0] && face[j][1] !== v1[1]) {
+	// 			var x = (slope * v0[1]) + v0[0] - ((-1*face[j][1]/slope) + face[j][0]);
+	// 			var y = slope * (x - face[j][0]) + face[j][1];
+	// 			output.push([face[j],[x,y]]);
+	// 		}
+	// 	}
+	// }
+
+	// return output;
+}
+
+// function perpHelper(poly, straightSkeleton, perpEdges, changed) {
+// 	// Input polygon, straightSkeleton as array of polys, the perpendicular edges
+// 	// as array of arrays of edges, and an array of arrays of vertices
+
+// 	if (changed.length === 0) {
+// 		return straightSkeleton;
+// 	}
+
+
+
+// }
+
+function findInArray(array0, array1) {
+	// Find index of array1 in array0
+	// array0 is an array of 2 element arrays
+	// array1 is a 2 element array
+	// if array1 is not in array0, return -1
+	for (var i = 0; i < array0.length; i++) {
+		if (array0[i][0] === array1[0] && array0[i][1] === array1[1]) {
+			return i;
+		}
+	}
+	return -1;
+}
+
+
+// DEPRECATED
+function flattenSkeleton(straightSkeleton) {
+	// Flattens vertices down to just coordinates again
+
+	var output = [];
+	for (var i = 0; i < straightSkeleton.length; i++) {
+		var polygon = [[],straightSkeleton[i][1]];
+		for (var j = 0; j < straightSkeleton[i][0].length; j++) {
+			polygon[0].push(straightSkeleton[i][0][j][0]);
+		}
+
+		output.push(polygon);
+	}
+	return output;
+}
+
+function findPerpEdge(edge, vertex) {
+	// Input an edge as an array of vertices and a vertex
+
+	// y-y1 = m(x-x1)
+	// -y1/m + x1 = x
+
+	// Slope of perpendicular line
+	var slope = -(edge[0][0]-edge[1][0]) / (edge[0][1]-edge[1][1]);
+	return [calculateIntersection(edge[0],edge[1],vertex,slope), vertex]
+
+}
+
+function calculateIntersection(v0, v1, v2, slope) {
+	// Find intersection of line defined by v0 and v1 and line defined by v2 and slope
+
+	var slopeEdge = (v0[1]-v1[1]) / (v0[0]-v1[0]);
+	var x = (-1*v0[1]/slopeEdge) + v0[0] - ((-1*v2[1]/slope) + v2[0]);
+	var y = slope * (x - v2[0]) + v2[1];
+	return [x,y];
+}
+
+function verifyIntersect(v0,v1,vtest) {
+	// See if vtest is between v0 and v1 assuming all are colinear
+	var test0 = Math.sqrt(Math.pow(vtest[0]-v0[0],2)+Math.pow(vtest[1]-v0[1],2));
+	var test1 = Math.sqrt(Math.pow(vtest[0]-v1[0],2)+Math.pow(vtest[1]-v1[1],2));
+	var dist = Math.sqrt(Math.pow(v1[0]-v0[0],2)+Math.pow(v1[1]-v0[1],2));
+	return (dist > test0 && dist > test1);
+}
+
+function findBisectorSlope(v0, v1, v2) {
+	// Find slope such that edge v1,v2 is the bisector of the angle
+	// between the line formed by the slope and v1 and v0,v1
+
+	var a = [v0[0]-v1[0], v0[1]-v1[1]];
+	var b = [v2[0]-v1[0], v2[1]-v1[1]];
+	var angle = vector_angle(a,b);
+	var vec = rotate(a,angle);
+	return vec[1]/vec[0];
+
 }
