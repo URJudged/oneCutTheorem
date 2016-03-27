@@ -154,7 +154,7 @@ function build_straight_skeleton(poly){
 
     for (var i = 0; i < faces.length; i++) {
         faces[i].vertices = pair(deep_flatten(faces[i].vertices));
-        faces[i].adjacent_faces = pair(deep_flatten(faces[i].adjacent_faces));
+        faces[i].adjacent_faces = deep_flatten(faces[i].adjacent_faces);
     }
     return faces;
 }
