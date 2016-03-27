@@ -397,8 +397,10 @@ function findStraightSkeleton(poly) {
 		var wSv1 = wStarVerts[i];
 		var wSv2 = wStarVerts[(i+1) % poly.length];
 
-		wSv1.face_right = face;
-		wSv2.face_left = face;
+		wSv1.face_front = face;
+		wSv2.face_back = face;
+
+		ss.push(face);
 	}
 	for (var i = 0; i < poly.length; i++) {
 		var v1 = poly[i];
@@ -412,8 +414,10 @@ function findStraightSkeleton(poly) {
 		var wSv2 = wStarVerts[reversed_start_v + (i+1) % poly.length];
 		var wSv1 = wStarVerts[reversed_start_v + i];
 
-		wSv2.face_right = face;
-		wSv1.face_left = face;
+		wSv2.face_front = face;
+		wSv1.face_back = face;
+
+		ss.push(face);
 	}
 
 	function getCollapseTime(edge) {
