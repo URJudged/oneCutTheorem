@@ -2,7 +2,44 @@
 <head>
 <meta charset="utf-8">
 <title>Interactive Gallery</title>
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
 <style>
+
+body {
+  overflow: hidden;
+}
+#displays {
+  display: flex;
+  position:absolute;
+  top:0;
+  left:0;
+  bottom:0;
+  right:0;
+}
+#c1c {
+  flex: 1;
+  min-width: 200px;
+}
+#c1{
+  width:100%;
+  height:auto;
+  max-width:960;
+}
+#info {
+  flex: initial;
+  width:400px;
+  min-width: 200px;
+  height: 100%;
+  overflow: scroll;
+}
+#infopanel {
+  margin:20px;
+}
+.separator {
+  margin-top:10px;
+  margin-bottom:10px;
+  border-bottom: 1px solid #eee;
+}
 
 #help{
 /*  position:absolute;
@@ -15,7 +52,7 @@
 path.polygon {
   stroke: #000;
   fill: #eee;
-  line-width: 5px;
+  stroke-width: 5px;
 }
 path.polygon.bad {
   fill: transparent;
@@ -23,13 +60,13 @@ path.polygon.bad {
 path.graph {
   stroke: #797;
   fill: transparent;
-  line-width: 4px;
+  stroke-width: 2px;
   pointer-events:none;
 }
 path.perp {
   stroke: #779;
   fill: transparent;
-  line-width: 4px;
+  stroke-width: 2px;
   pointer-events:none;
 }
 path.guard_vis {
@@ -39,7 +76,7 @@ path.guard_vis {
 }
 
 circle.polygon_v {
-  fill: #00F;
+  fill: #000;
 }
 circle.graph_v {
   /*fill: #F00;*/
@@ -56,15 +93,41 @@ circle.graph_v {
 <script src="//d3js.org/d3.v3.min.js"></script>
 <script type="text/javascript" src="numeric.js"></script>
 <script src="simpler.js"></script>
+
+<div id="displays">
+  <div id="c1c"><svg id="c1" width="1000" height="1000" viewBox="0 0 1000 1000"></svg></div>
+  <div id="info"><div id="infopanel" class="panel panel-default">
+    <div class="panel-body">
+      <!-- <button id="resetbutton" class="btn btn-warning">Reset Hexagon</button> -->
+      <div class="separator"></div>
+      <h1>One-Cut Helper</h1>
+      <h4>A project by <strong>Daniel Johnson</strong>, <strong>Judge Lee</strong>, and <strong>Jackson Warley</strong>.</h4>
+      <p>The one-cut theorem, proved by Erik D. Demaine, Martin L. Demaine, and Anna Lubiw, statest that any plane graph of cuts can be formed by folding a sheet of paper and then making a single cut. This folding is based on the straight-skeleton of the plane graph.</p>
+
+      <p>The straight skeleton is defined by etc etc etc</p>
+
+      <p>To enable folding, perpendiculars are added to the graph. These perpendiculars start at vertices of the straight skeleton and then trace out lines perpendicular to the cut edge (the edge of the polygon). etc etc</p>
+
+      <h2>How to fold and cut a polygon</h2>
+      <ol>
+      <li>Create your polygon on the left.</li>
+      <li>Print it out.</li>
+      <li>Crease the mountain folds (denoted by ) and valley folds (denoted by ).</li>
+      <li>Fold along the lines. If this is not obvious, one strategy, from Erik Demaine's paper, is to identify <em>corridors</em>, which are regions bounded by perpendiculars (denoted by ), and fold them into <em>accordions</em>. etc etc</li>
+      </ol>
+    </div>
+  </div></div>
+</div>
+
 <script>
 
-var width = 960,
-    height = 500;
+var width = 1000,
+    height = 1000;
 
 // var polygon = [[300,300],[341,370],[322,411],[402,436],[296,437],[213,296],[450,170],[563,339],[511,326],[480,381],[433,307]];
 // var polygon = [[300,300],[450, 170],[600, 310],[450, 450],[400, 290]];
-var polygon = [[300,300],[600, 300],[450, 450]];
-var polygon = [[300,300],[511,202],[600,300],[450,450]];
+// var polygon = [[300,300],[600, 300],[450, 450]];
+var polygon = [[354.127197265625,461.0284118652344],[359.4438171386719,145.16644287109375],[777.576416015625,345.43707275390625],[452.50341796875,580.1082763671875],[543.3694152832031,374.221923828125],[485.18267822265625,286.2652282714844]];
 var polygon_is_good = true;
 
 var sskel = null;
@@ -113,9 +176,10 @@ function click_to_remove(x, sourcearray, min){
   });
 }
 
-var svg = d3.select("body").append("svg")
-    .attr("width", width)
-    .attr("height", height)
+// var svg = d3.select("body").append("svg")
+//     .attr("width", width)
+//     .attr("height", height)
+var svg = d3.select("#c1");
 
 var polygon_path = svg.append("g").selectAll("path.polygon");
 var polygon_verts = svg.append("g").selectAll("circle.polygon_v");
@@ -162,7 +226,8 @@ function update(){
   polygon_is_good = check_simple(polygon) && check_clockwise(polygon);
   if(polygon_is_good){
     sskel = build_straight_skeleton(polygon);
-    perps = findPerpendiculars(polygon, sskel);
+    perps = [];
+    // perps = findPerpendiculars(polygon, sskel);
   }else{
     sskel = null;
     perps = null;
@@ -205,7 +270,7 @@ function redraw(){
   graph_path.exit().remove();
   graph_path.enter().append("path").attr("class","graph");
   graph_path.attr("d", function(d){
-    return poly_d_fn(d.vertices);
+    return open_poly_d_fn(d.vertices.slice(1).concat(d.vertices.slice(0,1)));
   });
   perp_path.exit().remove();
   perp_path.enter().append("path").attr("class","perp");
@@ -222,6 +287,9 @@ function redraw(){
 
 function poly_d_fn(d) {
   return "M" + d.join("L") + "Z";
+}
+function open_poly_d_fn(d) {
+  return "M" + d.join("L");
 }
 
 </script>
