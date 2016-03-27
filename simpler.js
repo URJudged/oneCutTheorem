@@ -416,31 +416,26 @@ function findPerpendiculars(poly, straightSkeleton) {
 
     // Go through each polygon of the straight skeleton
     for (var p = 0; p < straightSkeleton.length; p++) {
-        console.log("p=",p);
 
         // Go through vertices of the polygon
         var polygon = straightSkeleton[p];
         for (var v = 2; v < polygon.vertices.length; v++) {
-            console.log("v=",v);
-
             var edge = findPerpEdge([polygon.vertices[0],polygon.vertices[1]], polygon.vertices[v]);
 
             // If the edge doesn't actually intersect with the cut polygon
             if(!verifyIntersect(polygon.vertices[0],polygon.vertices[1],edge[0])) {
-                console.log("Not intersecting");
-                console.log(polygon.vertices[0],polygon.vertices[1],edge[0]);
                 continue;
             }
             output.push(edge);
-            console.log("Perp added");
-            console.log(edge);
 
             var vertex = edge[0];
             var pNew = polygon.adjacent_faces[0];
             var intersectEdge = [polygon.vertices[0],polygon.vertices[1]];
 
             // While not going to infinity, keep making angle bisectors
-            while (pNew >= 0){
+            console.log("Check face: ", pNew);
+            while (!(pNew < 0 || pNew > straightSkeleton.length)){
+                console.log("Propogating perpendicular");
                 polygon = straightSkeleton[pNew];
                 var slope = findBisectorSlope(edge[1],edge[0],intersectEdge[0]);
 
@@ -455,9 +450,9 @@ function findPerpendiculars(poly, straightSkeleton) {
                         vertex = intersection;
                         pNew = polygon.adjacent_faces[i];
                         intersectEdge = [polygon.vertices[i],polygon.vertices[(i+1)%polygon.vertices.length]];
-                        break;
                     }
                 }
+                break;
             }
         }
     }
@@ -540,8 +535,7 @@ function findPerpEdge(edge, vertex) {
 
     // Slope of perpendicular line
     var slope = -(edge[0][0]-edge[1][0]) / (edge[0][1]-edge[1][1]);
-    console.log("perp slope = ", slope)
-    return [calculateIntersection(edge[0],edge[1],vertex,slope), vertex]
+    return [vertex, calculateIntersection(edge[0],edge[1],vertex,slope)]
 
 }
 
@@ -572,4 +566,120 @@ function findBisectorSlope(v0, v1, v2) {
     var vec = rotate(a,angle);
     return vec[1]/vec[0];
 
+}
+
+function assignFolds(poly, ss, perps) {
+
+    var mountain = [];
+    var valley = [];
+
+    // Assign straight skeleton
+    for (var f = 0; f < ss.length; f++) {
+        for (var v = 1; v < ss[f].vertices.length; v++) {
+            var adj = ss[f].adjacent_faces[v];
+            var fold = [ss[f].vertices[v],ss[f].vertices[(v+1)%ss[f].vertices.length]];
+
+            if (adj > f) {
+                var adjEdge = [ss[adj].vertices[0],ss[adj].vertices[1]];
+                var edge = [ss[f].vertices[0],ss[f].vertices[1]];
+                var angle = vector_angle([adjEdge[0][0]-adjEdge[1][0],adjEdge[0][1]-adjEdge[1][1]],
+                    [edge[0][0]-edge[1][0],edge[0][1]-edge[1][1]]);
+
+                // Convex
+                if (angle >= 0 && angle < Math.PI) {
+                    mountain.push(fold);
+                }
+                else {
+                    valley.push(fold);
+                }
+            }
+        }
+    }
+
+
+    var wasMount = false;
+    // Perpendiculars
+    for (var p = 0; p < perps.length; p++) {
+        if (p > 0) {
+            if (arrayEq(perps[p][0],perps[(p-1)][1])) {
+                if (wasMount) {
+                    valley.push(perps[p]);
+                }
+                else {
+                    mountain.push(perps[p]);
+                }
+            }
+        }
+
+        else {
+            var mcount = 0;
+            var vcount = 0;
+            for (var m = 0; m < mountain.length; m++) {
+                if(arrayEq(mountian[m][0],perps[p][0])) {
+                    mcount++;
+                }
+            }
+            for (var va = 0; va < valley.length; va++) {
+                if(arrayEq(valley[va][0],perps[p][0])) {
+                    vcount++;
+                }
+            }
+
+            // degree 4 => 3 mountains, 1 valley
+            // degree 6 => 4 mountains, 2 valleys
+            if (mcount === 3 && vcount < 2) {
+                valley.push(perps[p]);
+            }
+            // degree 6 => 4 mountains, 2 valleys
+            else if (mcount === 3 && vcount === 2) {
+                mountain.push(perps[p]);
+            }
+            // degree 4 => 3 valleys, 1 mountain
+            // degree 6 => 4 valleys, 2 mountains
+            else if (vcount === 3 && mcount < 2) {
+                mountain.push(perps[p]);
+            }
+            // degree 6 => 4 valleys, 2 mountains
+            else if (vcount === 3 && mcount === 2) {
+                valley.push(perps[p]);
+            }
+            // degree 6 => 4 mountains, 2 valleys (chosen)
+            else if (mcount === 2 && vcount === 2) {
+                mountain.push(perps[p]);
+            }
+            // degree 6 => 4 mountains, 2 valleys
+            else if (mcount === 4) {
+                valley.push(perps[p]);
+            }
+            // degree 6 => 4 valleys, 2 mountains
+            else if (vcount === 4) {
+                mountain.push(perps[p]);
+            }
+            // degree 4 => 3 mountains, 1 valley (chosen)
+            // degree 6 => 4 mountains, 2 valleys
+            else if (mcount === 2 && vcount === 1) {
+                mountain.push(perps[p]);
+            }
+            // degree 4 => 3 valleys, 1 mountain (chosen)
+            // degree 6 => 4 valleys, 2 mountains
+            else if (vcount === 2 && mcount === 1) {
+                valley.push(perps[p]);
+            }
+        }
+    }
+    return [mountain, valley];
+}
+
+function arrayEq(ar0, ar1) {
+    // SHALLOW EQUALITY
+
+    if (ar0.length !== ar1.length) {
+        return false;
+    }
+    for (var i = 0; i < ar0.length; i++) {
+        if (ar0[i] !== ar1[i]) {
+            return false;
+        }
+    }
+    return true;
 }
