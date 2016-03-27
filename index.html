@@ -57,10 +57,17 @@ body {
   pointer-events:none;
 }
 
+.imgembed {
+  width: 200px;
+  max-width: 100%;
+  margin:0 auto;
+  display:block;
+}
+
 @media (max-width:500px){
   #displays{
     display:block;
-    overflow:scroll;
+    /*overflow:scroll;*/
   }
   #info{
     max-width:none;
@@ -131,21 +138,20 @@ circle.graph_v {
   <div id="info"><div id="infopanel" class="panel panel-default">
     <div class="panel-body">
       <!-- <button id="resetbutton" class="btn btn-warning">Reset Hexagon</button> -->
-      <div class="separator"></div>
+      <!-- <div class="separator"></div> -->
       <h1>One-Cut Helper</h1>
       <h4>A project by <strong>Daniel Johnson</strong>, <strong>Judge Lee</strong>, and <strong>Jackson Warley</strong>.</h4>
       <p>The one-cut theorem, proved by Erik D. Demaine, Martin L. Demaine, and Anna Lubiw, statest that any plane graph of cuts can be formed by folding a sheet of paper and then making a single cut. This folding is based on the straight-skeleton of the plane graph.</p>
 
-      <p>The straight skeleton is defined by etc etc etc</p>
+      <p>The straight skeleton is defined by continuously shifting the edges of the polygon inward and tracing the paths formed by the vertices. To enable this to be folding, perpendiculars are added to the graph. These perpendiculars start at vertices of the straight skeleton and then trace out lines perpendicular to the cut edges (the edges of the polygon).</p>
 
-      <p>To enable folding, perpendiculars are added to the graph. These perpendiculars start at vertices of the straight skeleton and then trace out lines perpendicular to the cut edge (the edge of the polygon). etc etc</p>
-
-      <h2>How to fold and cut a polygon</h2>
+      <h2>How to Fold And Cut a Polygon:</h2>
       <ol>
       <li>Create your polygon on the left.</li>
-      <li>Print it out.</li>
-      <li>Crease the mountain folds (denoted by ) and valley folds (denoted by ).</li>
-      <li>Fold along the lines. If this is not obvious, one strategy, from Erik Demaine's paper, is to identify <em>corridors</em>, which are regions bounded by perpendiculars (denoted by ), and fold them into <em>accordions</em>. etc etc</li>
+      <li>Print out this page.</li>
+      <li>Crease the mountain folds (denoted by dashed lines) and valley folds (denoted by dotted lines).</li>
+      <li>Fold along the lines. The cut edges should all line up. If folding is difficult, it can be helpful to identify <em>corridors</em>, which are regions bounded by perpendiculars (denoted by something?). Each corridor should have a constant width, and will be foldable into a single fan-like column, called an <em>accordion</em>.</li>
+      <li>Make your cut!</li>
       </ol>
     </div>
   </div></div>
