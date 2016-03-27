@@ -26,6 +26,12 @@ path.graph {
   line-width: 4px;
   pointer-events:none;
 }
+path.perp {
+  stroke: #779;
+  fill: transparent;
+  line-width: 4px;
+  pointer-events:none;
+}
 path.guard_vis {
   stroke: transparent;
   fill: rgba(255,0,0,0.3);
@@ -62,6 +68,7 @@ var polygon = [[300,300],[511,202],[600,300],[450,450]];
 var polygon_is_good = true;
 
 var sskel = null;
+var perps = null;
 
 //////////////////////////
 
@@ -114,7 +121,7 @@ var polygon_path = svg.append("g").selectAll("path.polygon");
 var polygon_verts = svg.append("g").selectAll("circle.polygon_v");
 
 var graph_path = svg.append("g").selectAll("path.graph");
-var graph_verts = svg.append("g").selectAll("circle.graph");
+var perp_path = svg.append("g").selectAll("path.perp");
 
 update();
 
@@ -155,8 +162,10 @@ function update(){
   polygon_is_good = check_simple(polygon) && check_clockwise(polygon);
   if(polygon_is_good){
     sskel = build_straight_skeleton(polygon);
+    perps = findPerpendiculars(polygon, sskel);
   }else{
     sskel = null;
+    perps = null;
   }
 
   redraw();
@@ -188,14 +197,19 @@ function redraw(){
 
   if(sskel){
     graph_path = graph_path.data(sskel);
+    perp_path = perp_path.data(perps);
   }else{
     graph_path = graph_path.data([]);
+    perp_path = perp_path.data([]);
   }
   graph_path.exit().remove();
   graph_path.enter().append("path").attr("class","graph");
   graph_path.attr("d", function(d){
     return poly_d_fn(d.vertices);
   });
+  perp_path.exit().remove();
+  perp_path.enter().append("path").attr("class","perp");
+  perp_path.attr("d", poly_d_fn);
   
   polygon_verts = polygon_verts.data(polygon);
   polygon_verts.exit().remove();
