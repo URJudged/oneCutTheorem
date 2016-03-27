@@ -40,9 +40,41 @@ function findStraightSkeleton(poly){
 	}
 
 	for (var i = 0; i < lengthOrder.length; i++) {
-		
+
 	}
 
+}
+
+function findPerpendiculars(poly, straightSkeleton) {
+	// The straightSkeleton[i] should correspond to edge made up of poly[i] and poly[(i+1)%poly.length]
+	// Returns an array of 2 vertex pairs (straight skeleton vertex and vertex on polygon)
+
+	var output = []
+
+	for (var i = 0; i < poly.length; i++) {
+
+		var v0 = poly[i];
+		var v1 = poly[(i+1)%poly.length];
+		var face = straightSkeleton[i]
 
 
+		// Get perpendicular slope
+		var slope = -(v0[0]-v1[0]) / (v0[1]-v1[1]);
+
+
+		// y-y1=m(x-x1)
+		// y-(y1/m)+x1 = m
+		// y+slope*v0[1]+v0[0] = x
+		// y-face[j][1]/slope+face[j][0] = x
+		for (var j = 0; j < face.length; j++) {
+			if (face[j][0] !== v0[0] && face[j][1] !== v0[1] 
+				&&face[j][0] !== v1[0] && face[j][1] !== v1[1]) {
+				var x = (slope * v0[1]) + v0[0] - ((-1*face[j][1]/slope) + face[j][0]);
+				var y = slope * (x - face[j][0]) + face[j][1];
+				output.push([face[j],[x,y]]);
+			}
+		}
+	}
+
+	return output;
 }
