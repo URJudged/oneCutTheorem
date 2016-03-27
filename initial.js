@@ -782,3 +782,53 @@ function findBisectorSlope(v0, v1, v2) {
 	return vec[1]/vec[0];
 
 }
+
+function foldAssignment(poly, straightSkeleton, perpendiculars) {
+	// Get fold assignments for each edge. 
+	var mountain = [];
+	var valley = [];
+
+	// Assign straight skeleton first
+	// start with edges intersecting the cut polygon
+	for (var p = 0; p < poly.length; p++) {
+
+		// Figure out if vertex p is convex
+		var v0 = [poly[(i-1)%poly.length][0]-poly[i][0],poly[(i-1)%poly.length][1]-poly[i][1]];
+		var v1 = [poly[(i+1)%poly.length][0]-poly[i][0],poly[(i+1)%poly.length][1]-poly[i][1]];
+
+		// If convex, set straight skeleton edge containing p be a mountain fold
+		if (vector_angle(v0,v1) > 0) {
+			mountain.push([straightSkeleton[p].vertices[0],straightSkeleton[p].vertices[straightSkeleton[p].vertices.length]]);
+			mountain.push([straightSkeleton[p+poly.length].vertices[1],straightSkeleton[p+poly.length].vertices[2]]);
+		}
+
+		// Otherwise assign valley fold
+		else {
+			valley.push([straightSkeleton[p].vertices[0],straightSkeleton[p].vertices[straightSkeleton[p].vertices.length]])
+			valley.push([straightSkeleton[p+poly.length].vertices[1],straightSkeleton[p+poly.length].vertices[2]]);
+		}
+	}
+
+	// add straight skeleton edges not touching the cut polygon.
+	for (var p = 0; p < straightSkeleton.length; p++) {
+		for (var v = 2; 1 < straightSkeleton[p].vertices.length; v++) {
+			var i = straightSkeleton[p].adjacent_faces[v];
+			var index = straightSkeleton[i].vertices.indexOf(v);
+			var v0 = [straightSkeleton[i].vertices[(index-1)%straightSkeleton[i].vertices.length][0]-straightSkeleton[i].vertices[index][0]
+						,straightSkeleton[i].vertices[(i-1)%poly.length][1]-straightSkeleton[i].vertices[index][1]];
+			var v1 = [straightSkeleton[i].vertices[(index+1)%straightSkeleton[i].vertices.length][0]-straightSkeleton[i].vertices[index][0]
+						,straightSkeleton[i].vertices[(i+1)%poly.length][1]-straightSkeleton[i].vertices[index][1]];
+
+			if (vector_angle(v0,v1) > Math.PI) {
+
+				mountain.push(straightSkeleton[i].vertices[(index+1)%straightSkeleton[i].vertices.length],straightSkeleton[i].vertices[index]);
+				i = straightSkeleton[i].adjacent_faces[v];
+				index = straightSkeleton[i].vertices.indexOf(v);
+				valley.push(straightSkeleton[i].vertices[(index+1)%straightSkeleton[i].vertices.length],straightSkeleton[i].vertices[index]);
+			}
+
+
+		}
+	}
+
+}
