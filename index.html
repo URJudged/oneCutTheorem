@@ -22,6 +22,7 @@ path.polygon.bad {
 }
 path.graph {
   stroke: #797;
+  fill: transparent;
   line-width: 4px;
   pointer-events:none;
 }
@@ -48,22 +49,24 @@ circle.graph_v {
 <script src="priority-queue.js"></script>
 <script src="//d3js.org/d3.v3.min.js"></script>
 <script type="text/javascript" src="numeric.js"></script>
-<script src="initial.js"></script>
+<script src="simpler.js"></script>
 <script>
 
 var width = 960,
     height = 500;
 
-var polygon = [[300,300],[341,370],[322,411],[402,436],[296,437],[213,296],[450,170],[563,339],[511,326],[480,381],[433,307]];
-//[[300,300],[450, 170],[600, 310],[450, 450],[400, 290]];
+// var polygon = [[300,300],[341,370],[322,411],[402,436],[296,437],[213,296],[450,170],[563,339],[511,326],[480,381],[433,307]];
+// var polygon = [[300,300],[450, 170],[600, 310],[450, 450],[400, 290]];
+var polygon = [[300,300],[600, 300],[450, 450]];
+var polygon = [[300,300],[511,202],[600,300],[450,450]];
 var polygon_is_good = true;
 
-var motorcycle_graph = null;
+var sskel = null;
 
 //////////////////////////
 
 function dragmove(d,i) {
-  console.log("Drag");
+  // console.log("Drag");
   d[0] += d3.event.dx;
   d[1] += d3.event.dy;
 
@@ -79,9 +82,9 @@ function dragmove(d,i) {
 }
 
 function drag_spawnpoly(d,i) {
-  console.log("Start");
+  // console.log("Start");
   if(d3.event.sourceEvent.shiftKey){
-    console.log("Drag spawn!");
+    // console.log("Drag spawn!");
     var copy = d.slice();
     polygon.splice(i,0,copy);
   }
@@ -148,19 +151,19 @@ function check_clockwise(poly){
 }
 
 function update(){
-  console.log(check_simple(polygon) , check_clockwise(polygon));
+  // console.log(check_simple(polygon) , check_clockwise(polygon));
   polygon_is_good = check_simple(polygon) && check_clockwise(polygon);
   if(polygon_is_good){
-    motorcycle_graph = doubleMotorcycleGraph(polygon);
+    sskel = build_straight_skeleton(polygon);
   }else{
-    motorcycle_graph = null;
+    sskel = null;
   }
 
   redraw();
 }
 
 function get_shifted_pos(pt, time){
-  if(!pt.pos) pt = motorcycle_graph[0][pt];
+  if(!pt.pos) pt = sskel[0][pt];
   return move_pos(pt.pos, pt.vel, time);
 }
 
@@ -171,7 +174,7 @@ document.addEventListener("mousemove",function(evt){
 });
 
 function redraw(){
-  var time = mousetime*100;
+  // var time = mousetime*100;
   polygon_path = polygon_path.data([polygon]);
   polygon_path.exit().remove();
   polygon_path.enter().append("path").attr("class","polygon");
@@ -183,17 +186,15 @@ function redraw(){
     polygon_path.attr("class", "polygon bad");
   }
 
-  if(motorcycle_graph){
-    graph_path = graph_path.data(motorcycle_graph[1]);
-    graph_verts = graph_verts.data(motorcycle_graph[0]);
+  if(sskel){
+    graph_path = graph_path.data(sskel);
   }else{
     graph_path = graph_path.data([]);
-    graph_verts = graph_verts.data([]);
   }
   graph_path.exit().remove();
   graph_path.enter().append("path").attr("class","graph");
   graph_path.attr("d", function(d){
-    return "M" + get_shifted_pos(d[0],time) + "L" + get_shifted_pos(d[1],time);
+    return poly_d_fn(d.vertices);
   });
   
   polygon_verts = polygon_verts.data(polygon);
@@ -203,20 +204,6 @@ function redraw(){
       .attr("transform", function(d) { return "translate(" + d + ")"; })
       .attr("r", 6)
       .call(dragpoly).call(click_to_remove,polygon,3);
-
-  graph_verts.exit().remove();
-  graph_verts.enter().append("circle");
-  graph_verts.attr("class","graph_v")
-      .attr("transform", function(d) { return "translate(" + get_shifted_pos(d,time) + ")"; })
-      .attr("r", 6)
-      .attr("fill",function(d){
-        return {
-          "convex":"red",
-          "reflex":"orange",
-          "resting_steiner":"green",
-          "moving_steiner":"blue"
-        }[d.type];
-      });
 }
 
 function poly_d_fn(d) {

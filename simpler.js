@@ -61,7 +61,9 @@ function get_bisector_vel(a,b){
 }
 
 function adjacent_vert_intersection(a,b) {
-    return intersect_edges(a.pos, numeric.add(a.pos, a.vel), b.pos, numeric.add(b.pos, b.vel)).a;
+    var t = intersect_edges(a.pos, numeric.add(a.pos, a.vel), b.pos, numeric.add(b.pos, b.vel)).a;
+    if(t>0) return t;
+    else return Infinity;
 }
 
 function scalar_project(v,axis){
@@ -86,7 +88,27 @@ function vert_edge_intersection(p,e1,e2) {
     }
 }
 
-function straight_skeleton(poly){
+function deep_flatten(arr){
+    var acc = [];
+    for (var i = 0; i < arr.length; i++) {
+        if(arr[i] instanceof Array){
+            acc = acc.concat(deep_flatten(arr[i]));
+        } else {
+            acc.push(arr[i]);
+        }
+    }
+    console.log(acc);
+    return acc;
+}
+function pair(arr){
+    var acc = [];
+    for (var i = 0; i < arr.length; i+=2) {
+        acc.push([arr[i],arr[i+1]]);
+    }
+    return acc
+}
+
+function build_straight_skeleton(poly){
     var faces = [];
     var face_maps_int = [];
     var face_maps_ext = [];
@@ -97,13 +119,14 @@ function straight_skeleton(poly){
             idx:i,
             source: i,
             direction: 'interior',
-            vertices: [v1, v2],
-            adjacent_faces: [i+poly.length],
+            vertices: [v1, v2, []],
+            adjacent_faces: [i+poly.length, []],
         };
         faces.push(face);
         face_maps_int.push({
             face:face,
-            insertion: 2
+            vert_insertion: face.vertices[2],
+            adj_insertion: face.adjacent_faces[1],
         });
     }
     for (var i = 0; i < poly.length; i++) {
@@ -113,20 +136,26 @@ function straight_skeleton(poly){
             idx: i+poly.length,
             source: i,
             direction: 'exterior',
-            vertices: [v2, v1],
-            adjacent_faces: [i-poly.length],
+            vertices: [v2, v1, []],
+            adjacent_faces: [i-poly.length, []],
         };
         face_maps_ext.unshift({
             face:face,
-            insertion: 2
+            vert_insertion: face.vertices[2],
+            adj_insertion: face.adjacent_faces[1],
         });
         faces.push(face);
     }
     straight_skeleton_helper(poly, face_maps_int);
     var revpoly = poly.slice();
     revpoly.reverse();
+    face_maps_ext.push(face_maps_ext.shift());
     straight_skeleton_helper(revpoly, face_maps_ext);
 
+    for (var i = 0; i < faces.length; i++) {
+        faces[i].vertices = pair(deep_flatten(faces[i].vertices));
+        faces[i].adjacent_faces = pair(deep_flatten(faces[i].adjacent_faces));
+    }
     return faces;
 }
 
@@ -136,9 +165,9 @@ function straight_skeleton_helper(subpoly, faces){
     // corresponding to each side of the polygon
     var vertices = [];
     for (var i = 0; i < subpoly.length; i++) {
-        var v0 = poly[(i+poly.length-1) % poly.length];
-        var v1 = poly[i];
-        var v2 = poly[(i+1) % poly.length];
+        var v0 = subpoly[(i+subpoly.length-1) % subpoly.length];
+        var v1 = subpoly[i];
+        var v2 = subpoly[(i+1) % subpoly.length];
 
         var b = to_unit(numeric.sub(v0,v1));
         var a = to_unit(numeric.sub(v2,v1));
@@ -168,8 +197,10 @@ function straight_skeleton_helper(subpoly, faces){
     for (var i = 0; i < subpoly.length; i++) {
         var v = vertices[i];
         for (var j = 0; j < subpoly.length; j++) {
-            if(j==i || ((j+1) % subpoly.length) == i)
-                continue;
+            if((j-1+subpoly.length) % subpoly.length == i) continue;
+            if(j==i) continue;
+            if(((j+1) % subpoly.length) == i) continue;
+            if(((j+2) % subpoly.length) == i) continue;
             var e1 = vertices[j];
             var e2 = vertices[(j+1) % subpoly.length];
             var time = vert_edge_intersection(v,e1,e2);
@@ -188,20 +219,156 @@ function straight_skeleton_helper(subpoly, faces){
     }
 
     if(soonest_event_time == Infinity){
+        // console.log("Inf");
         // Nothing intersected! Project to infinity vertices
-        // TODO TODO
+        for (var i = 0; i < vertices.length; i++) {
+            vertices[i].pos = move_pos(vertices[i].pos, vertices[i].vel, 100000);
+        }
+        for (var i = 0; i < vertices.length; i++) {
+            var pfobj = faces[(i-1+vertices.length)%vertices.length];
+            var cfobj = faces[i];
+            var nfobj = faces[(i+1)%vertices.length];
+            var cv = vertices[i];
+            var nv = vertices[(i+1)%vertices.length];
+            cfobj.vert_insertion.push(nv.pos, cv.pos);
+            cfobj.adj_insertion.push(nfobj.face.idx,-1,pfobj.face.idx);
+        }
     } else if(soonest_event.type == "vert-vert"){
         // Two vertices collided.
         // Shift all vertices by soonest_event_time forward.
+        for (var i = 0; i < vertices.length; i++) {
+            vertices[i].pos = move_pos(vertices[i].pos, vertices[i].vel, soonest_event_time);
+        }
         // Connect the face corresponding to these vertices.
-        // Replace the two vertices with one in the polygon
-        // Recurse
+        var collision_pt = vertices[soonest_event.i1].pos;
+        console.log(vertices[soonest_event.i1].pos, vertices[soonest_event.i2].pos);
+        lfobj = faces[(soonest_event.i1-1 + faces.length) % faces.length];
+        mfobj = faces[soonest_event.i1];
+        rfobj = faces[soonest_event.i2];
+
+        if(faces.length == 3){
+            // All faces are contracting!
+            lfobj.vert_insertion.push(collision_pt);
+            mfobj.vert_insertion.push(collision_pt);
+            rfobj.vert_insertion.push(collision_pt);
+
+            lfobj.adj_insertion.push(mfobj.face.idx, rfobj.face.idx);
+            mfobj.adj_insertion.push(rfobj.face.idx, lfobj.face.idx);
+            mfobj.adj_insertion.push(lfobj.face.idx, mfobj.face.idx);
+        } else{
+            // Remove one face
+            var lv_rest = [];
+            var rv_rest = [];
+            lfobj.vert_insertion.push(collision_pt, lv_rest);
+            mfobj.vert_insertion.push(collision_pt);
+            rfobj.vert_insertion.push(rv_rest,collision_pt);
+
+            var la_rest = [];
+            var ra_rest = [];
+            lfobj.adj_insertion.push(mfobj.face.idx,la_rest);
+            mfobj.adj_insertion.push(rfobj.face.idx, lfobj.face.idx);
+            rfobj.adj_insertion.push(ra_rest,mfobj.face.idx);
+
+            var new_subpoly = [];
+            var new_faces = [];
+
+            var p_idx = (soonest_event.i1-1 + subpoly.length) % subpoly.length;
+            var n_idx = (soonest_event.i2 + 1) % subpoly.length;
+            new_subpoly.push(vertices[p_idx].pos);
+            new_subpoly.push(collision_pt);
+
+            new_faces.push({
+                face:lfobj.face,
+                vert_insertion: lv_rest,
+                adj_insertion: la_rest
+            });
+            new_faces.push({
+                face:rfobj.face,
+                vert_insertion: rv_rest,
+                adj_insertion: ra_rest
+            });
+
+            for (var i = n_idx; i != p_idx; i = ((i+1) % subpoly.length)) {
+                new_subpoly.push(vertices[i].pos);
+                new_faces.push(faces[i]);
+            }
+
+            straight_skeleton_helper(new_subpoly,new_faces);
+        }
     } else if(soonest_event.type == "vert-edge"){
         // Vertex collided with an edge
         // Shift all vertices by soonest_event_time forward.
+        for (var i = 0; i < vertices.length; i++) {
+            vertices[i].pos = move_pos(vertices[i].pos, vertices[i].vel, soonest_event_time);
+        }
         // Add the intersecting vertex to its corresponding faces
+        var collision_pt = vertices[soonest_event.i].pos;
+        var afobj = faces[(soonest_event.i-1 + faces.length) % faces.length];
+        var bfobj = faces[soonest_event.i];
+        var cfobj = faces[soonest_event.ei1];
+
+        var av_rest = [];
+        var bv_rest = [];
+        var cv_a_rest = [];
+        var cv_b_rest = [];
+        afobj.vert_insertion.push(collision_pt, av_rest);
+        bfobj.vert_insertion.push(bv_rest,collision_pt);
+        cfobj.vert_insertion.push(cv_a_rest,collision_pt,cv_b_rest);
+
+        var aa_rest = [];
+        var ba_rest = [];
+        var ca_a_rest = [];
+        var ca_b_rest = [];
+        afobj.adj_insertion.push(bfobj.face.idx,aa_rest);
+        bfobj.adj_insertion.push(ba_rest,afobj.face.idx);
+        cfobj.adj_insertion.push(cv_a_rest,cv_b_rest);
+
         // Split polygon into two pieces, and create corresponding face accessors
+        var new_subpoly_a = [];
+        var new_faces_a = [];
+        var new_subpoly_b = [];
+        var new_faces_b = [];
+
+        var p_idx = (soonest_event.i-1 + subpoly.length) % subpoly.length;
+        var n_idx = (soonest_event.i + 1) % subpoly.length;
+
+        new_subpoly_a.push(vertices[p_idx].pos);
+        new_subpoly_a.push(collision_pt);
+        new_faces_a.push({
+            face:afobj.face,
+            vert_insertion: av_rest,
+            adj_insertion: aa_rest
+        });
+        new_faces_a.push({
+            face:cfobj.face,
+            vert_insertion: cv_a_rest,
+            adj_insertion: ca_a_rest
+        });
+        for (var i = soonest_event.ei2; i != p_idx; i = ((i+1) % subpoly.length)) {
+            new_subpoly_a.push(vertices[i].pos);
+            new_faces_a.push(faces[i]);
+        }
+
+        new_subpoly_b.push(vertices[soonest_event.ei1].pos);
+        new_subpoly_b.push(collision_pt);
+        new_faces_b.push({
+            face:cfobj.face,
+            vert_insertion: cv_b_rest,
+            adj_insertion: ca_b_rest
+        });
+        new_faces_b.push({
+            face:afobj.face,
+            vert_insertion: bv_rest,
+            adj_insertion: ba_rest
+        });
+        for (var i = n_idx; i != soonest_event.ei1; i = ((i+1) % subpoly.length)) {
+            new_subpoly_b.push(vertices[i].pos);
+            new_faces_b.push(faces[i]);
+        }
+
         // Recurse
+        straight_skeleton_helper(new_subpoly_a,new_faces_a);
+        straight_skeleton_helper(new_subpoly_b,new_faces_b);
     }
 }
 
