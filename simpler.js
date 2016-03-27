@@ -437,11 +437,12 @@ function findPerpendiculars(poly, sskel) {
                 console.log("Propogating perpendicular");
                 var slope = findBisectorSlope(edge[1],edge[0],intersectEdge[0]);
 
-
-                for (var i = 0; i < sskel[pNew].vertices.length; i++) {
+                // Go through each edge of the face and see if intersects with that edge
+                for (var i = 2; i < sskel[pNew].vertices.length; i++) {
                     var intersection = calculateIntersection(sskel[pNew].vertices[i],
                         sskel[pNew].vertices[(i+1)%sskel[pNew].vertices.length],vertex,slope);
 
+                    // If it does intersect, try to propogate perpendiculars.
                     if(verifyIntersect(sskel[pNew].vertices[i],
                         sskel[pNew].vertices[(i+1)%sskel[pNew].vertices.length],intersection)) {
                         output.push([intersection,vertex]);
