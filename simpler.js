@@ -414,57 +414,79 @@ function findPerpendiculars(poly, sskel) {
 
     var output = [];
 
-    // Go through each polygon of the straight skeleton
-    for (var p = 0; p < sskel.length; p++) {
+    // Go through each face of the straight skeleton
+    for (var f = 0; f < sskel.length; p++) {
 
-        // Go through vertices of the polygon
-        for (var v = 2; v < sskel[p].vertices.length; v++) {
-            var edge = findPerpEdge([sskel[p].vertices[0],sskel[p].vertices[1]], sskel[p].vertices[v]);
+        // Go through vertices of the face
+        for (var v = 2; v < sskel[f].vertices.length; v++) {
+            var nextFace = f;
+            var vertex = sskel[f].vertices[v]
+            while (!(nextFace < 0)) {
+                // if vertex on cut edge
+                if (verifyIntersect(sskel[nextFace].vertices[0],sskel[nextFace].vertices[1],vertex)) {
 
-            // If the edge doesn't actually intersect with the cut polygon
-            if(!verifyIntersect(sskel[p].vertices[0],sskel[p].vertices[1],edge[1])) {
-                continue;
-            }
-            output.push(edge);
-
-            var vertex = edge[0];
-            var pNew = sskel[p].adjacent_faces[0];
-            var intersectEdge = [sskel[p].vertices[0],sskel[p].vertices[1]];
-
-            // While not going to infinity, keep making angle bisectors
-            console.log("Check face: ", pNew);
-            while (!(pNew < 0 || pNew > sskel.length)){
-                console.log("Propogating perpendicular");
-                var slope = findBisectorSlope(edge[1],edge[0],intersectEdge[0]);
-
-                // Go through each edge of the face and see if intersects with that edge
-                for (var i = 2; i < sskel[pNew].vertices.length; i++) {
-                    var intersection = calculateIntersection(sskel[pNew].vertices[i],
-                        sskel[pNew].vertices[(i+1)%sskel[pNew].vertices.length],vertex,slope);
-
-                    // If it does intersect, try to propogate perpendiculars.
-                    if(verifyIntersect(sskel[pNew].vertices[i],
-                        sskel[pNew].vertices[(i+1)%sskel[pNew].vertices.length],intersection)) {
-                        output.push([intersection,vertex]);
-                        console.log("Adding propogation", output[output.length-1]);
-                        edges = [intersection, vertex];
-                        vertex = intersection;
-                        pNew = sskel[pNew].adjacent_faces[i];
-                        console.log(pNew);
-                        if (!(pNew < 0)) {
-                            intersectEdge = [sskel[pNew].vertices[i],sskel[pNew].vertices[(i+1)%sskel[pNew].vertices.length]];
-                        }
-                        break;
-                    }
                 }
-                break;
+                var edge = findPerpEdge([sskel[nextFace].vertices[0],sskel[nextFace].vertices[1]], vertex);
+                if (verifyIntersect(sskel[nextFace].vertices[0],sskel[nextFace].vertices[1],edge[1])) {
+                    output.push(edge);
+                }
             }
+
+
+            // var edge = findPerpEdge([sskel[p].vertices[0],sskel[p].vertices[1]], sskel[p].vertices[v]);
+
+            // // If the edge doesn't actually intersect with the cut polygon
+            // if(!verifyIntersect(sskel[p].vertices[0],sskel[p].vertices[1],edge[1])) {
+                
+            // }
+            // output.push(edge);
+
+            // var vertex = edge[0];
+            // var pNew = sskel[p].adjacent_faces[0];
+            // var intersectEdge = [sskel[p].vertices[0],sskel[p].vertices[1]];
+
+            // // While not going to infinity, keep making angle bisectors
+            // console.log("Check face: ", pNew);
+            // while (!(pNew < 0 || pNew > sskel.length)){
+            //     console.log("Propogating perpendicular");
+            //     var slope = findBisectorSlope(edge[1],edge[0],intersectEdge[0]);
+
+            //     // Go through each edge of the face and see if intersects with that edge
+            //     for (var i = 2; i < sskel[pNew].vertices.length; i++) {
+            //         var intersection = calculateIntersection(sskel[pNew].vertices[i],
+            //             sskel[pNew].vertices[(i+1)%sskel[pNew].vertices.length],vertex,slope);
+
+            //         // If it does intersect, try to propogate perpendiculars.
+            //         if(verifyIntersect(sskel[pNew].vertices[i],
+            //             sskel[pNew].vertices[(i+1)%sskel[pNew].vertices.length],intersection)) {
+            //             output.push([intersection,vertex]);
+            //             console.log("Adding propogation", output[output.length-1]);
+            //             edges = [intersection, vertex];
+            //             vertex = intersection;
+            //             pNew = sskel[pNew].adjacent_faces[i];
+            //             console.log(pNew);
+            //             if (!(pNew < 0)) {
+            //                 intersectEdge = [sskel[pNew].vertices[i],sskel[pNew].vertices[(i+1)%sskel[pNew].vertices.length]];
+            //             }
+            //             break;
+            //         }
+            //     }
+            //     break;
+            // }
         }
     }
     return output;
 
 }
 
+function perpHelper(vertex, face, edge) {
+    var ray = rotate([face.vertices[0][0]-face.vertices[1][0],face.vertices[0][1]-face.vertices[1][1]],Math.PI/2);
+    var angle = vector_angle(ray, [face.vertices[edge][0]-face.vertices[(edge+1)%face.vertices.length][0],
+        face.vertices[edge][1]-face.vertices[(edge+1)%face.vertices.length][1]]);
+    for (var v = 2; v < face.vertices.length; v++) {
+        if ()
+    }
+}
 
 
 function findInArray(array0, array1) {
