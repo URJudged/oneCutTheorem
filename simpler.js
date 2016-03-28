@@ -560,8 +560,7 @@ function findBisectorSlope(v0, v1, v2) {
 
 function assignFolds(poly, ss, perps) {
 
-    var mountain = [];
-    var valley = [];
+    var folds = [];
 
     // Assign straight skeleton
     for (var f = 0; f < ss.length; f++) {
@@ -572,15 +571,21 @@ function assignFolds(poly, ss, perps) {
             if (adj > f) {
                 var adjEdge = [ss[adj].vertices[0],ss[adj].vertices[1]];
                 var edge = [ss[f].vertices[0],ss[f].vertices[1]];
-                var angle = vector_angle([adjEdge[0][0]-adjEdge[1][0],adjEdge[0][1]-adjEdge[1][1]],
-                    [edge[0][0]-edge[1][0],edge[0][1]-edge[1][1]]);
 
-                // Convex
-                if (angle >= 0 && angle < Math.PI) {
-                    mountain.push(fold);
-                }
-                else {
-                    valley.push(fold);
+                var adj_vec = numeric.sub(ss[adj].vertices[1], ss[adj].vertices[0]);
+                var fold_vec = numeric.sub(fold[1], fold[0]);
+
+                var sidedness = scalar_project(adj_vec, fold_vec);
+
+                // var angle = vector_angle([adjEdge[0][0]-adjEdge[1][0],adjEdge[0][1]-adjEdge[1][1]],
+                //     [edge[0][0]-edge[1][0],edge[0][1]-edge[1][1]]);
+
+                // Do mountain fold if it is convex and inside, or reflex and outside
+                var do_mountain = (sidedness > 0) ^ !(f < poly.length);
+                if (do_mountain) {
+                    folds.push({type:"mountain", from:"ss", edge:fold});
+                } else {
+                    folds.push({type:"valley", from:"ss", edge:fold});
                 }
             }
         }
@@ -593,10 +598,10 @@ function assignFolds(poly, ss, perps) {
         if (p > 0) {
             if (arrayEq(perps[p][0],perps[(p-1)][1])) {
                 if (wasMount) {
-                    valley.push(perps[p]);
+                    folds.push({type:"valley", from:"perp", edge:perps[p]});
                 }
                 else {
-                    mountain.push(perps[p]);
+                    folds.push({type:"mountain", from:"perp", edge:perps[p]});
                 }
             }
         }
@@ -618,46 +623,46 @@ function assignFolds(poly, ss, perps) {
             // degree 4 => 3 mountains, 1 valley
             // degree 6 => 4 mountains, 2 valleys
             if (mcount === 3 && vcount < 2) {
-                valley.push(perps[p]);
+                folds.push({type:"valley", from:"perp", edge:perps[p]});
             }
             // degree 6 => 4 mountains, 2 valleys
             else if (mcount === 3 && vcount === 2) {
-                mountain.push(perps[p]);
+                folds.push({type:"mountain", from:"perp", edge:perps[p]});
             }
             // degree 4 => 3 valleys, 1 mountain
             // degree 6 => 4 valleys, 2 mountains
             else if (vcount === 3 && mcount < 2) {
-                mountain.push(perps[p]);
+                folds.push({type:"mountain", from:"perp", edge:perps[p]});
             }
             // degree 6 => 4 valleys, 2 mountains
             else if (vcount === 3 && mcount === 2) {
-                valley.push(perps[p]);
+                folds.push({type:"valley", from:"perp", edge:perps[p]});
             }
             // degree 6 => 4 mountains, 2 valleys (chosen)
             else if (mcount === 2 && vcount === 2) {
-                mountain.push(perps[p]);
+                folds.push({type:"mountain", from:"perp", edge:perps[p]});
             }
             // degree 6 => 4 mountains, 2 valleys
             else if (mcount === 4) {
-                valley.push(perps[p]);
+                folds.push({type:"valley", from:"perp", edge:perps[p]});
             }
             // degree 6 => 4 valleys, 2 mountains
             else if (vcount === 4) {
-                mountain.push(perps[p]);
+                folds.push({type:"mountain", from:"perp", edge:perps[p]});
             }
             // degree 4 => 3 mountains, 1 valley (chosen)
             // degree 6 => 4 mountains, 2 valleys
             else if (mcount === 2 && vcount === 1) {
-                mountain.push(perps[p]);
+                folds.push({type:"mountain", from:"perp", edge:perps[p]});
             }
             // degree 4 => 3 valleys, 1 mountain (chosen)
             // degree 6 => 4 valleys, 2 mountains
             else if (vcount === 2 && mcount === 1) {
-                valley.push(perps[p]);
+                folds.push({type:"valley", from:"perp", edge:perps[p]});
             }
         }
     }
-    return [mountain, valley];
+    return folds;
 }
 
 function arrayEq(ar0, ar1) {
