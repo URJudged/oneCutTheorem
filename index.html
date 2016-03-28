@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <head>
 <meta charset="utf-8">
-<title>Interactive Gallery</title>
+<title>One-Cut Helper</title>
 <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
 <style>
 
@@ -79,11 +79,6 @@ body {
     overflow:auto;
   }
 }
-@media print {
-  #info, .helptext {
-    display:none;
-  }
-}
 
 path.polygon {
   stroke: #000;
@@ -94,13 +89,13 @@ path.polygon.bad {
   fill: transparent;
 }
 path.graph {
-  stroke: #797;
+  stroke: #ccc;
   fill: transparent;
   stroke-width: 2px;
   pointer-events:none;
 }
 path.perp {
-  stroke: #779;
+  stroke: #ccc;
   fill: transparent;
   stroke-width: 2px;
   pointer-events:none;
@@ -126,6 +121,16 @@ circle.graph_v {
   pointer-events:none;
 }
 
+
+@media print {
+  #info, .helptext {
+    display:none;
+  }
+  circle.polygon_v {
+    display: none;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -148,14 +153,14 @@ circle.graph_v {
       <h4>A project by <strong>Daniel Johnson</strong>, <strong>Judge Lee</strong>, and <strong>Jackson Warley</strong>.</h4>
       <p>The one-cut theorem, proved by Erik D. Demaine, Martin L. Demaine, and Anna Lubiw, statest that any plane graph of cuts can be formed by folding a sheet of paper and then making a single cut. This folding is based on the straight-skeleton of the plane graph.</p>
 
-      <p>The straight skeleton is defined by continuously shifting the edges of the polygon inward and tracing the paths formed by the vertices. To enable this to be folding, perpendiculars are added to the graph. These perpendiculars start at vertices of the straight skeleton and then trace out lines perpendicular to the cut edges (the edges of the polygon).</p>
+      <p>The straight skeleton is defined by continuously shifting the edges of the polygon inward and tracing the paths formed by the vertices (red and orange). To enable this to be folded, perpendiculars are added to the graph. These perpendiculars (blue) start at vertices of the straight skeleton and then trace out lines perpendicular to the cut edges (black).</p>
 
-      <h2>How to Fold And Cut a Polygon:</h2>
+      <h3>How to Fold and Cut a Polygon:</h3>
       <ol>
       <li>Create your polygon on the left.</li>
       <li>Print out this page.</li>
-      <li>Crease the mountain folds (denoted by dashed lines) and valley folds (denoted by dotted lines).</li>
-      <li>Fold along the lines. The cut edges should all line up. If folding is difficult, it can be helpful to identify <em>corridors</em>, which are regions bounded by perpendiculars (denoted by something?). Each corridor should have a constant width, and will be foldable into a single fan-like column, called an <em>accordion</em>.</li>
+      <li>Crease the mountain folds (denoted by dash-dot lines) and valley folds (denoted by dashed lines).</li>
+      <li>Fold along the lines. The cut edges should all line up. If folding is difficult, it can be helpful to identify <em>corridors</em>, which are constant-width regions bounded by perpendiculars (blue). Each corridor will be foldable into a single fan-like column, called an <em>accordion</em>.</li>
       <li>Make your cut!</li>
       </ol>
     </div>
@@ -167,11 +172,7 @@ circle.graph_v {
 var width = 800,
     height = 800;
 
-// var polygon = [[300,300],[341,370],[322,411],[402,436],[296,437],[213,296],[450,170],[563,339],[511,326],[480,381],[433,307]];
-// var polygon = [[300,300],[450, 170],[600, 310],[450, 450],[400, 290]];
-var polygon = [[300,300],[600, 300],[450, 450]];
-// var polygon = [[354.127197265625,461.0284118652344],[359.4438171386719,145.16644287109375],[777.576416015625,345.43707275390625],[284.9641571044922,688.3106689453125],[585.2542419433594,300.9234924316406],[485.18267822265625,286.2652282714844]];
-// var polygon = [[354.127197265625,461.0284118652344],[359.4438171386719,145.16644287109375],[777.576416015625,345.43707275390625],[284.9641571044922,688.3106689453125],[485.18267822265625,286.2652282714844]];
+var polygon = [[150,200],[609.5919799804688,104.24484252929688],[612.49365234375,559.8073425292969],[294.1966552734375,447.2060241699219],[153.465576171875,497.9852600097656],[240.5157470703125,265.8515319824219]];
 var polygon_is_good = true;
 
 var sskel = null;
@@ -188,11 +189,6 @@ function dragmove(d,i) {
   // console.log("Drag");
   d[0] = d3.event.x;
   d[1] = d3.event.y;
-
-  // var snap = 50;
-  // var epsilon = 0.01;
-  // d[0] = Math.round(d[0]/snap)*snap + epsilon*Math.random();
-  // d[1] = Math.round(d[1]/snap)*snap + epsilon*Math.random();
 
   if(d[0]<0) d[0]=0;
   if(d[0]>width) d[0]=width;
@@ -237,11 +233,11 @@ function click_to_remove(x, sourcearray, min){
 var svg = d3.select("#c1");
 
 var polygon_path = svg.append("g").selectAll("path.polygon");
-var polygon_verts = svg.append("g").selectAll("circle.polygon_v");
 
 var graph_path = svg.append("g").selectAll("path.graph");
 var perp_path = svg.append("g").selectAll("path.perp");
 var fold_path = svg.append("g").selectAll("path.fold");
+var polygon_verts = svg.append("g").selectAll("circle.polygon_v");
 
 update();
 
@@ -320,7 +316,7 @@ function redraw(){
 
   if(sskel){
     graph_path = graph_path.data(sskel);
-    perp_path = perp_path.data(perps);
+    perp_path = perp_path.data(deep_flatten(perps));
     fold_path = fold_path.data(folds);
   }else{
     graph_path = graph_path.data([]);
@@ -335,12 +331,13 @@ function redraw(){
 
   perp_path.exit().remove();
   perp_path.enter().append("path").attr("class","perp");
-  perp_path.attr("d", poly_d_fn);
-
+  perp_path.attr("d", function(d){
+    return "M" + d.edge[0] + "L" + d.edge[1];
+  });
   var fold_dash_map = {
     "mountain":"10,4,4,4,4,4",
-    "valley": "10,10",
-    "unknown": "5,10",
+    "valley": "20,20",
+    "unknown": "5,20",
   };
   var fold_color_map = {
     "ss":{
@@ -348,6 +345,8 @@ function redraw(){
       "valley":"#f80",
     },
     "perp":{
+      "mountain":"#00f",
+      "valley":"#08f",
       "unknown":"#888",
     },
   }

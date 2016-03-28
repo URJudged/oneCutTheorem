@@ -108,7 +108,7 @@ function pair(arr){
     return acc
 }
 
-var STRAIGHT_SKELETON_DEBUG = false;
+var DEBUG = false;
 
 function build_straight_skeleton(poly){
     var faces = [];
@@ -159,7 +159,7 @@ function build_straight_skeleton(poly){
         faces[i].vertices = pair(deep_flatten(faces[i].vertices));
         faces[i].adjacent_faces = deep_flatten(faces[i].adjacent_faces);
     }
-    if(STRAIGHT_SKELETON_DEBUG){
+    if(DEBUG){
         console.group("The full result:");
         for (var i = 0; i < faces.length; i++) {
             console.log(i, " with adjacencies ",faces[i].adjacent_faces);
@@ -173,7 +173,7 @@ function straight_skeleton_helper(subpoly, faces){
     // subpoly is a polygon
     // faces is a set of {face:face, insertion:index},
     // corresponding to each side of the polygon
-    if(STRAIGHT_SKELETON_DEBUG){
+    if(DEBUG){
         console.group("Running sshelper with ", subpoly.length, " vertices and faces:");
         for (var i = 0; i < faces.length; i++) {
             console.log(faces[i].face.idx, " with adjacencies ", JSON.stringify(faces[i].face.adjacent_faces));
@@ -237,7 +237,7 @@ function straight_skeleton_helper(subpoly, faces){
     }
 
     if(soonest_event_time == Infinity){
-        if(STRAIGHT_SKELETON_DEBUG) console.log("Doing infinity case");
+        if(DEBUG) console.log("Doing infinity case");
         // console.log("Inf");
         // Nothing intersected! Project to infinity vertices
         for (var i = 0; i < vertices.length; i++) {
@@ -266,7 +266,7 @@ function straight_skeleton_helper(subpoly, faces){
         rfobj = faces[soonest_event.i2];
 
         if(faces.length == 3){
-            if(STRAIGHT_SKELETON_DEBUG) console.log("Doing triangle contraction case");
+            if(DEBUG) console.log("Doing triangle contraction case");
             // All faces are contracting!
             lfobj.vert_insertion.push(collision_pt);
             mfobj.vert_insertion.push(collision_pt);
@@ -276,7 +276,7 @@ function straight_skeleton_helper(subpoly, faces){
             mfobj.adj_insertion.push(rfobj.face.idx, lfobj.face.idx);
             rfobj.adj_insertion.push(lfobj.face.idx, mfobj.face.idx);
         } else{
-            if(STRAIGHT_SKELETON_DEBUG) console.log("Doing merge case on ", soonest_event.i1, " and ", soonest_event.i2);
+            if(DEBUG) console.log("Doing merge case on ", soonest_event.i1, " and ", soonest_event.i2);
             // Remove one face
             var lv_rest = [];
             var rv_rest = [];
@@ -314,14 +314,14 @@ function straight_skeleton_helper(subpoly, faces){
                 new_faces.push(faces[i]);
             }
 
-            if(STRAIGHT_SKELETON_DEBUG) console.group("Recursion:");
+            if(DEBUG) console.group("Recursion:");
             straight_skeleton_helper(new_subpoly,new_faces);
-            if(STRAIGHT_SKELETON_DEBUG) console.groupEnd();
+            if(DEBUG) console.groupEnd();
         }
     } else if(soonest_event.type == "vert-edge"){
         // Vertex collided with an edge
         // Shift all vertices by soonest_event_time forward.
-        if(STRAIGHT_SKELETON_DEBUG) console.log("Doing split case on ", soonest_event.i, " with ", soonest_event.ei1, " and ", soonest_event.ei2);
+        if(DEBUG) console.log("Doing split case on ", soonest_event.i, " with ", soonest_event.ei1, " and ", soonest_event.ei2);
         for (var i = 0; i < vertices.length; i++) {
             vertices[i].pos = move_pos(vertices[i].pos, vertices[i].vel, soonest_event_time);
         }
@@ -391,14 +391,14 @@ function straight_skeleton_helper(subpoly, faces){
         }
 
         // Recurse
-        if(STRAIGHT_SKELETON_DEBUG) console.group("First recursion:");
+        if(DEBUG) console.group("First recursion:");
         straight_skeleton_helper(new_subpoly_a,new_faces_a);
-        if(STRAIGHT_SKELETON_DEBUG) console.groupEnd();
-        if(STRAIGHT_SKELETON_DEBUG) console.group("Second recursion");
+        if(DEBUG) console.groupEnd();
+        if(DEBUG) console.group("Second recursion");
         straight_skeleton_helper(new_subpoly_b,new_faces_b);
-        if(STRAIGHT_SKELETON_DEBUG) console.groupEnd();
+        if(DEBUG) console.groupEnd();
     }
-    if(STRAIGHT_SKELETON_DEBUG) {
+    if(DEBUG) {
         console.group("Finally:");
         for (var i = 0; i < faces.length; i++) {
             console.log(faces[i].face.idx, " with adjacencies ", JSON.stringify(faces[i].face.adjacent_faces));
@@ -406,6 +406,8 @@ function straight_skeleton_helper(subpoly, faces){
         console.groupEnd();
     }
 }
+
+var MAX_PERP_PROGRESSION = 20;
 
 function findPerpendiculars(poly, sskel) {
     // The sskel[i] should correspond to edge made up of poly[i] and poly[(i+1)%poly.length]
@@ -428,20 +430,24 @@ function findPerpendiculars(poly, sskel) {
             var vertex = sskel[f].vertices[v];
             var edge = v;
 
-            console.group("Starting perpendicular for face ",f," vertex ", v, " at ", vertex);
-            while(true){
+            if(DEBUG) console.group("Starting perpendicular for face ",f," vertex ", v, " at ", vertex);
+            var cur_perp = [];
+            for(var counter = 0; counter < MAX_PERP_PROGRESSION; counter++){
                 var result = perpHelper(vertex, sskel[face], edge);
                 if (result.vertex === null){
                     // This perpendicular doesn't actually exist
-                    console.log("Nonexistent perpendicular");
+                    if(DEBUG) console.log("Nonexistent perpendicular");
                     break;
                 }
-                console.log("Moving to ", result.vertex);
-                output.push([vertex, result.vertex]);
+                if(DEBUG) console.log("Moving to ", result.vertex);
+                cur_perp.push({
+                    edge:[vertex, result.vertex],
+                    face:face
+                });
                 var next_face = sskel[face].adjacent_faces[result.edge];
                 if(next_face == -1){
                     // Infinity face hit!
-                    console.log("Terminated at infinity");
+                    if(DEBUG) console.log("Terminated at infinity");
                     break;
                 }
                 var next_edge_start = sskel[face].vertices[(result.edge + 1)%sskel[face].vertices.length];
@@ -457,9 +463,12 @@ function findPerpendiculars(poly, sskel) {
                 face = next_face;
                 vertex = result.vertex;
                 edge = next_edge;
-                console.log("Now on face ",face," edge ", edge," and vertex ", result.vertex);
+                if(DEBUG) console.log("Now on face ",face," edge ", edge," and vertex ", result.vertex);
             }
-            console.groupEnd();
+            if(cur_perp.length > 0){
+                output.push(cur_perp);
+            }
+            if(DEBUG) console.groupEnd();
 
             // while (!(nextFace < 0)) {
             //     // if vertex on cut edge
@@ -520,6 +529,7 @@ function findPerpendiculars(poly, sskel) {
 }
 
 function perpHelper(vertex, face, edge) {
+
     var direction_ray = to_unit(rotate(numeric.sub(face.vertices[1], face.vertices[0]),Math.PI/2));
     var edge_ray = numeric.sub(face.vertices[(edge+1)%face.vertices.length], face.vertices[edge]);
     var angle = vector_angle(edge_ray, direction_ray);
@@ -638,89 +648,93 @@ function assignFolds(poly, ss, perps) {
                 //     [edge[0][0]-edge[1][0],edge[0][1]-edge[1][1]]);
 
                 // Do mountain fold if it is convex
-                var do_mountain = (sidedness > 0) ^ !(f < poly.length);
-                if (do_mountain) {
-                    folds.push({type:"mountain", from:"ss", edge:fold});
+                if ((sidedness > 0)) {
+                    folds.push({type:"mountain", from:"ss", above:(f < poly.length), edge:fold});
                 } else {
-                    folds.push({type:"valley", from:"ss", edge:fold});
+                    folds.push({type:"valley", from:"ss", above:(f < poly.length), edge:fold});
                 }
             }
         }
     }
 
-    for (var i = 0; i < perps.length; i++) {
-        folds.push({type:"unknown", from:"perp", edge:perps[i]});
+    // for (var i = 0; i < perps.length; i++) {
+    //     folds.push({type:"unknown", from:"perp", above:(perps[p].face < poly.length), edge:perps[i].edge});
+    // }
+    // return folds;
+
+    var type_swap_map = {
+        "mountain":"valley",
+        "valley":"mountain",
+        "unknown":"unknown",
     }
-    return folds;
 
     var wasMount = false;
     // Perpendiculars
     for (var p = 0; p < perps.length; p++) {
-        if (p > 0) {
-            if (arrayEq(perps[p][0],perps[(p-1)][1])) {
-                if (wasMount) {
-                    folds.push({type:"valley", from:"perp", edge:perps[p]});
-                }
-                else {
-                    folds.push({type:"mountain", from:"perp", edge:perps[p]});
-                }
+        var cur_perp = perps[p];
+
+        var mcount = 0;
+        var vcount = 0;
+        for (var m = 0; m < folds.length; m++) {
+            if(arrayEq(folds[m].edge[0],cur_perp[0].edge[0]) || arrayEq(folds[m].edge[1],cur_perp[0].edge[0])) {
+                if(folds[m].type == "mountain") mcount++;
+                else vcount++;
             }
         }
 
-        else {
-            var mcount = 0;
-            var vcount = 0;
-            for (var m = 0; m < mountain.length; m++) {
-                if(arrayEq(mountian[m][0],perps[p][0])) {
-                    mcount++;
-                }
-            }
-            for (var va = 0; va < valley.length; va++) {
-                if(arrayEq(valley[va][0],perps[p][0])) {
-                    vcount++;
-                }
-            }
+        // degree 4 => 3 mountains, 1 valley
+        // degree 6 => 4 mountains, 2 valleys
+        if (mcount === 3 && vcount < 2) {
+            folds.push({type:"valley", from:"perp", above:(cur_perp[0].face < poly.length), edge:cur_perp[0].edge});
+        }
+        // degree 6 => 4 mountains, 2 valleys
+        else if (mcount === 3 && vcount === 2) {
+            folds.push({type:"mountain", from:"perp", above:(cur_perp[0].face < poly.length), edge:cur_perp[0].edge});
+        }
+        // degree 4 => 3 valleys, 1 mountain
+        // degree 6 => 4 valleys, 2 mountains
+        else if (vcount === 3 && mcount < 2) {
+            folds.push({type:"mountain", from:"perp", above:(cur_perp[0].face < poly.length), edge:cur_perp[0].edge});
+        }
+        // degree 6 => 4 valleys, 2 mountains
+        else if (vcount === 3 && mcount === 2) {
+            folds.push({type:"valley", from:"perp", above:(cur_perp[0].face < poly.length), edge:cur_perp[0].edge});
+        }
+        // degree 6 => 4 mountains, 2 valleys (chosen)
+        else if (mcount === 2 && vcount === 2) {
+            folds.push({type:"mountain", from:"perp", above:(cur_perp[0].face < poly.length), edge:cur_perp[0].edge});
+        }
+        // degree 6 => 4 mountains, 2 valleys
+        else if (mcount === 4) {
+            folds.push({type:"valley", from:"perp", above:(cur_perp[0].face < poly.length), edge:cur_perp[0].edge});
+        }
+        // degree 6 => 4 valleys, 2 mountains
+        else if (vcount === 4) {
+            folds.push({type:"mountain", from:"perp", above:(cur_perp[0].face < poly.length), edge:cur_perp[0].edge});
+        }
+        // degree 4 => 3 mountains, 1 valley (chosen)
+        // degree 6 => 4 mountains, 2 valleys
+        else if (mcount === 2 && vcount === 1) {
+            folds.push({type:"mountain", from:"perp", above:(cur_perp[0].face < poly.length), edge:cur_perp[0].edge});
+        }
+        // degree 4 => 3 valleys, 1 mountain (chosen)
+        // degree 6 => 4 valleys, 2 mountains
+        else if (vcount === 2 && mcount === 1) {
+            folds.push({type:"valley", from:"perp", above:(cur_perp[0].face < poly.length), edge:cur_perp[0].edge});
+        }
+        // shouldn't happen
+        else{
+            folds.push({type:"unknown", from:"perp", above:(cur_perp[0].face < poly.length), edge:cur_perp[0].edge});
+        }
 
-            // degree 4 => 3 mountains, 1 valley
-            // degree 6 => 4 mountains, 2 valleys
-            if (mcount === 3 && vcount < 2) {
-                folds.push({type:"valley", from:"perp", edge:perps[p]});
-            }
-            // degree 6 => 4 mountains, 2 valleys
-            else if (mcount === 3 && vcount === 2) {
-                folds.push({type:"mountain", from:"perp", edge:perps[p]});
-            }
-            // degree 4 => 3 valleys, 1 mountain
-            // degree 6 => 4 valleys, 2 mountains
-            else if (vcount === 3 && mcount < 2) {
-                folds.push({type:"mountain", from:"perp", edge:perps[p]});
-            }
-            // degree 6 => 4 valleys, 2 mountains
-            else if (vcount === 3 && mcount === 2) {
-                folds.push({type:"valley", from:"perp", edge:perps[p]});
-            }
-            // degree 6 => 4 mountains, 2 valleys (chosen)
-            else if (mcount === 2 && vcount === 2) {
-                folds.push({type:"mountain", from:"perp", edge:perps[p]});
-            }
-            // degree 6 => 4 mountains, 2 valleys
-            else if (mcount === 4) {
-                folds.push({type:"valley", from:"perp", edge:perps[p]});
-            }
-            // degree 6 => 4 valleys, 2 mountains
-            else if (vcount === 4) {
-                folds.push({type:"mountain", from:"perp", edge:perps[p]});
-            }
-            // degree 4 => 3 mountains, 1 valley (chosen)
-            // degree 6 => 4 mountains, 2 valleys
-            else if (mcount === 2 && vcount === 1) {
-                folds.push({type:"mountain", from:"perp", edge:perps[p]});
-            }
-            // degree 4 => 3 valleys, 1 mountain (chosen)
-            // degree 6 => 4 valleys, 2 mountains
-            else if (vcount === 2 && mcount === 1) {
-                folds.push({type:"valley", from:"perp", edge:perps[p]});
-            }
+        for (var i = 1; i < cur_perp.length; i++) {
+            var newtype = type_swap_map[folds[folds.length-1].type];
+            folds.push({type:newtype, from:"perp", above:(cur_perp[i].face < poly.length), edge:cur_perp[i].edge});
+        }
+    }
+    for (var i = 0; i < folds.length; i++) {
+        if(!folds[i].above){
+            folds[i].type = type_swap_map[folds[i].type];
         }
     }
     return folds;
