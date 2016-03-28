@@ -169,8 +169,8 @@ var width = 800,
 
 // var polygon = [[300,300],[341,370],[322,411],[402,436],[296,437],[213,296],[450,170],[563,339],[511,326],[480,381],[433,307]];
 // var polygon = [[300,300],[450, 170],[600, 310],[450, 450],[400, 290]];
-// var polygon = [[300,300],[600, 300],[450, 450]];
-var polygon = [[354.127197265625,461.0284118652344],[359.4438171386719,145.16644287109375],[777.576416015625,345.43707275390625],[284.9641571044922,688.3106689453125],[585.2542419433594,300.9234924316406],[485.18267822265625,286.2652282714844]];
+var polygon = [[300,300],[600, 300],[450, 450]];
+// var polygon = [[354.127197265625,461.0284118652344],[359.4438171386719,145.16644287109375],[777.576416015625,345.43707275390625],[284.9641571044922,688.3106689453125],[585.2542419433594,300.9234924316406],[485.18267822265625,286.2652282714844]];
 // var polygon = [[354.127197265625,461.0284118652344],[359.4438171386719,145.16644287109375],[777.576416015625,345.43707275390625],[284.9641571044922,688.3106689453125],[485.18267822265625,286.2652282714844]];
 var polygon_is_good = true;
 
@@ -282,8 +282,8 @@ function update(){
   polygon_is_good = check_simple(polygon) && check_clockwise(polygon);
   if(polygon_is_good){
     sskel = build_straight_skeleton(polygon);
-    perps = [];
-    // perps = findPerpendiculars(polygon, sskel);
+    // perps = [];
+    perps = findPerpendiculars(polygon, sskel);
     folds = assignFolds(polygon, sskel, perps);
   }else{
     sskel = null;
@@ -337,15 +337,28 @@ function redraw(){
   perp_path.enter().append("path").attr("class","perp");
   perp_path.attr("d", poly_d_fn);
 
+  var fold_dash_map = {
+    "mountain":"10,4,4,4,4,4",
+    "valley": "10,10",
+    "unknown": "5,10",
+  };
+  var fold_color_map = {
+    "ss":{
+      "mountain":"#f00",
+      "valley":"#f80",
+    },
+    "perp":{
+      "unknown":"#888",
+    },
+  }
   fold_path.exit().remove();
   fold_path.enter().append("path").attr("class","fold");
   fold_path.attr("d", function(d){
       return "M" + d.edge[0] + "L" + d.edge[1];
     }).attr("stroke-dasharray", function(d){
-      return (d.type == "mountain") ? ("10,4,4,4,4,4") : ("10,10");
+      return fold_dash_map[d.type];
     }).attr("stroke", function(d){
-      if(d.from == "ss") return (d.type == "mountain") ? ("#f00") : ("#f80");
-      else return (d.type == "mountain") ? ("#00f") : ("#08f");
+      return fold_color_map[d.from][d.type];
     });
   
   polygon_verts = polygon_verts.data(polygon);

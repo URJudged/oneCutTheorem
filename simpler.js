@@ -415,22 +415,62 @@ function findPerpendiculars(poly, sskel) {
     var output = [];
 
     // Go through each face of the straight skeleton
-    for (var f = 0; f < sskel.length; p++) {
+    for (var f = 0; f < sskel.length; f++) {
 
         // Go through vertices of the face
         for (var v = 2; v < sskel[f].vertices.length; v++) {
-            var nextFace = f;
-            var vertex = sskel[f].vertices[v]
-            while (!(nextFace < 0)) {
-                // if vertex on cut edge
-                if (verifyIntersect(sskel[nextFace].vertices[0],sskel[nextFace].vertices[1],vertex)) {
-
-                }
-                var edge = findPerpEdge([sskel[nextFace].vertices[0],sskel[nextFace].vertices[1]], vertex);
-                if (verifyIntersect(sskel[nextFace].vertices[0],sskel[nextFace].vertices[1],edge[1])) {
-                    output.push(edge);
-                }
+            if(sskel[f].adjacent_faces[v] == -1 || sskel[f].adjacent_faces[v-1] == -1){
+                // This is an "infinity" vertex, which has no perpendiculars
+                break;
             }
+
+            var face = f;
+            var vertex = sskel[f].vertices[v];
+            var edge = v;
+
+            console.group("Starting perpendicular for face ",f," vertex ", v, " at ", vertex);
+            while(true){
+                var result = perpHelper(vertex, sskel[face], edge);
+                if (result.vertex === null){
+                    // This perpendicular doesn't actually exist
+                    console.log("Nonexistent perpendicular");
+                    break;
+                }
+                console.log("Moving to ", result.vertex);
+                output.push([vertex, result.vertex]);
+                var next_face = sskel[face].adjacent_faces[result.edge];
+                if(next_face == -1){
+                    // Infinity face hit!
+                    console.log("Terminated at infinity");
+                    break;
+                }
+                var next_edge_start = sskel[face].vertices[(result.edge + 1)%sskel[face].vertices.length];
+                var next_edge = null;
+                for (var i = 0; i < sskel[next_face].vertices.length; i++) {
+                    if(arrayEq(sskel[next_face].vertices[i], next_edge_start)){
+                        next_edge = i;
+                        break;
+                    }
+                }
+                if(next_edge === null) console.error("bad things");
+
+                face = next_face;
+                vertex = result.vertex;
+                edge = next_edge;
+                console.log("Now on face ",face," edge ", edge," and vertex ", result.vertex);
+            }
+            console.groupEnd();
+
+            // while (!(nextFace < 0)) {
+            //     // if vertex on cut edge
+            //     if (verifyIntersect(sskel[nextFace].vertices[0],sskel[nextFace].vertices[1],vertex)) {
+
+            //     }
+            //     var edge = findPerpEdge([sskel[nextFace].vertices[0],sskel[nextFace].vertices[1]], vertex);
+            //     if (verifyIntersect(sskel[nextFace].vertices[0],sskel[nextFace].vertices[1],edge[1])) {
+            //         output.push(edge);
+            //     }
+            // }
 
 
             // var edge = findPerpEdge([sskel[p].vertices[0],sskel[p].vertices[1]], sskel[p].vertices[v]);
@@ -480,12 +520,29 @@ function findPerpendiculars(poly, sskel) {
 }
 
 function perpHelper(vertex, face, edge) {
-    var ray = rotate([face.vertices[0][0]-face.vertices[1][0],face.vertices[0][1]-face.vertices[1][1]],Math.PI/2);
-    var angle = vector_angle(ray, [face.vertices[edge][0]-face.vertices[(edge+1)%face.vertices.length][0],
-        face.vertices[edge][1]-face.vertices[(edge+1)%face.vertices.length][1]]);
-    for (var v = 2; v < face.vertices.length; v++) {
-        if ()
+    var direction_ray = to_unit(rotate(numeric.sub(face.vertices[1], face.vertices[0]),Math.PI/2));
+    var edge_ray = numeric.sub(face.vertices[(edge+1)%face.vertices.length], face.vertices[edge]);
+    var angle = vector_angle(edge_ray, direction_ray);
+    if(angle < 0) direction_ray = numeric.mul(direction_ray, -1);
+
+    // Intersect it with everything
+    var soonest_time = Infinity;
+    var soonest_edge = null;
+    var soonest_point = null;
+    for (var v = 0; v < face.vertices.length; v++) {
+        if (v == edge) continue;
+        var e1 = face.vertices[v];
+        var e2 = face.vertices[(v+1)%face.vertices.length];
+        var intersect = intersect_edges(vertex, numeric.add(vertex,direction_ray), e1, e2);
+        if(intersect.a > 0 && intersect.a < soonest_time && intersect.b >= 0  && intersect.b <= 1){
+            soonest_time = intersect.a;
+            soonest_edge = v;
+            soonest_point = move_pos(vertex, direction_ray, intersect.a);
+        }
     }
+
+    // Pick the soonest
+    return {edge:soonest_edge, vertex:soonest_point};
 }
 
 
@@ -580,7 +637,7 @@ function assignFolds(poly, ss, perps) {
                 // var angle = vector_angle([adjEdge[0][0]-adjEdge[1][0],adjEdge[0][1]-adjEdge[1][1]],
                 //     [edge[0][0]-edge[1][0],edge[0][1]-edge[1][1]]);
 
-                // Do mountain fold if it is convex and inside, or reflex and outside
+                // Do mountain fold if it is convex
                 var do_mountain = (sidedness > 0) ^ !(f < poly.length);
                 if (do_mountain) {
                     folds.push({type:"mountain", from:"ss", edge:fold});
@@ -591,6 +648,10 @@ function assignFolds(poly, ss, perps) {
         }
     }
 
+    for (var i = 0; i < perps.length; i++) {
+        folds.push({type:"unknown", from:"perp", edge:perps[i]});
+    }
+    return folds;
 
     var wasMount = false;
     // Perpendiculars
