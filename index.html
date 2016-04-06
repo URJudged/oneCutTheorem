@@ -18,14 +18,20 @@ body {
 }
 #c1c {
   position:relative;
+  display:flex;
   flex: 3;
   min-width: 200px;
-  overflow: scroll;
+  min-height: 400px;
 }
-#c1{
-  width:100%;
-  height:auto;
-  max-width:800px;
+#c1c2 {
+  position:relative;
+  display:flex;
+  flex: 1;
+  margin:20px;
+}
+#c1 {
+  position:relative;
+  flex: 3;
 }
 #info {
   flex: 2;
@@ -35,7 +41,7 @@ body {
   overflow: scroll;
 }
 #infopanel {
-  margin:20px;
+  margin: 20px 20px 20px 0;
 }
 .separator {
   margin-top:10px;
@@ -48,13 +54,13 @@ body {
   font-size:10px;
   font-style:italic;
   color:#888;
-  background-color:rgba(255,255,255,0.9);
   text-align:center;
   position:absolute;
-  top:10px;
+  bottom:10px;
   left:10px;
   right:10px;
   pointer-events:none;
+  z-index:1;
 }
 
 .imgembed {
@@ -67,7 +73,6 @@ body {
 @media (max-width:500px){
   #displays{
     display:block;
-    /*overflow:scroll;*/
   }
   #info{
     max-width:none;
@@ -75,8 +80,8 @@ body {
     height:auto;
     overflow:auto;
   }
-  #c1c {
-    overflow:auto;
+  #infopanel {
+    margin: 0 20px 20px 20px;
   }
 }
 
@@ -102,7 +107,7 @@ path.perp {
 }
 path.fold {
   fill: transparent;
-  stroke-width: 5px;
+  stroke-width: 1.5px;
   pointer-events:none;
 }
 path.guard_vis {
@@ -111,20 +116,52 @@ path.guard_vis {
   pointer-events:none;
 }
 
-circle.polygon_v {
-  fill: #000;
+path.mountain {
+  
 }
-circle.graph_v {
-  /*fill: #F00;*/
-  stroke: #000;
-  line-width:1px;
-  pointer-events:none;
+path.valley {
+  stroke-dasharray: 5,5;
+}
+path.ss {
+  stroke: #f00;
+}
+path.perp {
+  stroke: #08f;
 }
 
+circle.polygon_v {
+  fill: #000;
+  r: 6;
+}
+.viewbounds {
+  stroke: #ddd;
+  stroke-width:1px;
+  fill: transparent;
+}
+#vertex-bounds{
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+
+.legend svg, svg.legend {
+  width:30px;
+  height:16px;
+}
+table.legend {
+  border-spacing: 3px;
+  border-collapse: separate;
+}
+.legend path {
+  stroke-width:1px;
+}
 
 @media print {
   #info, .helptext {
     display:none;
+  }
+  #c1c2{
+    border:none;
+    margin:0;
   }
   circle.polygon_v {
     display: none;
@@ -141,26 +178,54 @@ circle.graph_v {
 <script src="simpler.js"></script>
 
 <div id="displays">
-  <div id="c1c">
+<div id="c1c">
+  <div class="panel panel-default"id="c1c2">
     <div class="helptext">Drag vertices to deform polygon. Shift-drag an existing vertex to create a new vertex. Click on a vertex to remove it.</div>
-    <svg id="c1" width="800" height="800" viewBox="0 0 800 800"></svg>
+    <svg id="c1" class="panel-body"  viewBox="0 0 800 800" preserveAspectRatio="xMidYMid meet">
+      <rect id="vertex-bounds" class="viewbounds" x="44" y="44" width="712" height="712"></rect>
+    </svg>
   </div>
+</div>
   <div id="info"><div id="infopanel" class="panel panel-default">
     <div class="panel-body">
-      <!-- <button id="resetbutton" class="btn btn-warning">Reset Hexagon</button> -->
-      <!-- <div class="separator"></div> -->
       <h1>One-Cut Helper</h1>
       <h4>A project by <strong>Daniel Johnson</strong>, <strong>Judge Lee</strong>, and <strong>Jackson Warley</strong>.</h4>
       <p>The one-cut theorem, proved by Erik D. Demaine, Martin L. Demaine, and Anna Lubiw, statest that any plane graph of cuts can be formed by folding a sheet of paper and then making a single cut. This folding is based on the straight-skeleton of the plane graph.</p>
 
-      <p>The straight skeleton is defined by continuously shifting the edges of the polygon inward and tracing the paths formed by the vertices (red and orange). To enable this to be folded, perpendiculars are added to the graph. These perpendiculars (blue) start at vertices of the straight skeleton and then trace out lines perpendicular to the cut edges (black).</p>
+      <p>The straight skeleton is defined by continuously shifting the edges of the polygon inward and tracing the paths formed by the vertices. To enable this to be folded, perpendiculars are added to the graph. These perpendiculars start at vertices of the straight skeleton and then trace out lines perpendicular to the cut edges.</p>
+
+      <div class="separator"></div>
+      <div class="checkbox">
+        <label>
+          <input id="fold_check" type="checkbox" checked> Show Fold Types
+        </label>
+      </div>
+      <div class="checkbox">
+        <label>
+          <input id="ss_check" type="checkbox" checked> Straight Skeleton <svg class="legend foldsoff"><path class="ss" d="M0,11L30,11"></path></svg>
+        </label>
+        <table class="legend foldson">
+          <tr><td><svg><path class="ss mountain" d="M0,11L30,11"></path></svg></td><td>Mountain Fold</td></tr>
+          <tr><td><svg><path class="ss valley" d="M0,11L30,11"></path></svg></td><td>Valley Fold</td></tr>
+        </table>
+      </div>
+      <div class="checkbox">
+        <label>
+          <input id="perp_check" type="checkbox" checked> Perpendiculars <svg class="legend foldsoff"><path class="perp" d="M0,11L30,11"></path></svg>
+        </label>
+        <table class="legend foldson">
+          <tr><td><svg><path class="perp mountain" d="M0,11L30,11"></path></svg></td><td>Mountain Fold</td></tr>
+          <tr><td><svg><path class="perp valley" d="M0,11L30,11"></path></svg></td><td>Valley Fold</td></tr>
+        </table>
+      </div>
+      <div class="separator"></div>
 
       <h3>How to Fold and Cut a Polygon:</h3>
       <ol>
       <li>Create your polygon on the left.</li>
-      <li>Print out this page.</li>
-      <li>Crease the mountain folds (denoted by dash-dot lines) and valley folds (denoted by dashed lines).</li>
-      <li>Fold along the lines. The cut edges should all line up. If folding is difficult, it can be helpful to identify <em>corridors</em>, which are constant-width regions bounded by perpendiculars (blue). Each corridor will be foldable into a single fan-like column, called an <em>accordion</em>.</li>
+      <li>Print out this page!</li>
+      <li>Crease the mountain folds and valley folds.</li>
+      <li>Fold along the lines. The cut edges should all line up. If folding is difficult, it can be helpful to identify <em>corridors</em>, which are constant-width regions bounded by perpendiculars (blue). In most cases, each corridor will be foldable into a single fan-like column, called an <em>accordion</em>.</li>
       <li>Make your cut!</li>
       </ol>
     </div>
@@ -172,7 +237,7 @@ circle.graph_v {
 var width = 800,
     height = 800;
 
-var polygon = [[150,200],[609.5919799804688,104.24484252929688],[612.49365234375,559.8073425292969],[294.1966552734375,447.2060241699219],[153.465576171875,497.9852600097656],[240.5157470703125,265.8515319824219]];
+var polygon = [[150,270],[610,174],[612,630],[294,517],[153,568],[241,336]];
 var polygon_is_good = true;
 
 var sskel = null;
@@ -190,10 +255,12 @@ function dragmove(d,i) {
   d[0] = d3.event.x;
   d[1] = d3.event.y;
 
-  if(d[0]<0) d[0]=0;
-  if(d[0]>width) d[0]=width;
-  if(d[1]<0) d[1]=0;
-  if(d[1]>height) d[1]=height;
+  var pad = 50;
+
+  if(d[0]<pad) d[0]=pad;
+  if(d[0]>width-pad) d[0]=width-pad;
+  if(d[1]<pad) d[1]=pad;
+  if(d[1]>height-pad) d[1]=height-pad;
 
   d3.select(this).attr("transform", function(d,i){
     return "translate(" + d + ")"
@@ -209,13 +276,22 @@ function drag_spawnpoly(d,i) {
     polygon.splice(i,0,copy);
   }
   update();
+
+  enable_bounds();
 }
 
+function enable_bounds(){
+  document.getElementById("vertex-bounds").style.opacity = "1";
+}
+function disable_bounds(){
+  document.getElementById("vertex-bounds").style.opacity = "0";
+}
 
 var dragpoly = d3.behavior.drag()
         .origin(drag_origin)
         .on("drag", dragmove)
-        .on("dragstart",drag_spawnpoly);
+        .on("dragstart",drag_spawnpoly)
+        .on("dragend",disable_bounds);
 
 function click_to_remove(x, sourcearray, min){
   min = min | 0;
@@ -227,19 +303,37 @@ function click_to_remove(x, sourcearray, min){
   });
 }
 
-// var svg = d3.select("body").append("svg")
-//     .attr("width", width)
-//     .attr("height", height)
+var checkboxes = {
+  ss:true,
+  perp:true,
+  fold:true,
+}
+function check_checkbox_state(){
+  checkboxes.ss = document.getElementById("ss_check").checked;
+  checkboxes.perp = document.getElementById("perp_check").checked;
+  checkboxes.fold = document.getElementById("fold_check").checked;
+
+  Array.from(document.getElementsByClassName("foldson")).map(function(el){
+    el.style.display = checkboxes.fold ? "" : "none";
+  });
+  Array.from(document.getElementsByClassName("foldsoff")).map(function(el){
+    el.style.display = checkboxes.fold ? "none" : "";
+  });
+
+  update();
+}
+document.getElementById("ss_check").addEventListener("change", check_checkbox_state);
+document.getElementById("perp_check").addEventListener("change", check_checkbox_state);
+document.getElementById("fold_check").addEventListener("change", check_checkbox_state);
+
 var svg = d3.select("#c1");
 
 var polygon_path = svg.append("g").selectAll("path.polygon");
 
-var graph_path = svg.append("g").selectAll("path.graph");
-var perp_path = svg.append("g").selectAll("path.perp");
 var fold_path = svg.append("g").selectAll("path.fold");
 var polygon_verts = svg.append("g").selectAll("circle.polygon_v");
 
-update();
+check_checkbox_state();
 
 function check_simple(poly){
   // STUB: Should return true if polygon is simple
@@ -278,7 +372,6 @@ function update(){
   polygon_is_good = check_simple(polygon) && check_clockwise(polygon);
   if(polygon_is_good){
     sskel = build_straight_skeleton(polygon);
-    // perps = [];
     perps = findPerpendiculars(polygon, sskel);
     folds = assignFolds(polygon, sskel, perps);
   }else{
@@ -302,7 +395,6 @@ document.addEventListener("mousemove",function(evt){
 });
 
 function redraw(){
-  // var time = mousetime*100;
   polygon_path = polygon_path.data([polygon]);
   polygon_path.exit().remove();
   polygon_path.enter().append("path").attr("class","polygon");
@@ -315,49 +407,23 @@ function redraw(){
   }
 
   if(sskel){
-    graph_path = graph_path.data(sskel);
-    perp_path = perp_path.data(deep_flatten(perps));
     fold_path = fold_path.data(folds);
   }else{
-    graph_path = graph_path.data([]);
-    perp_path = perp_path.data([]);
     fold_path = fold_path.data([]);
   }
-  graph_path.exit().remove();
-  graph_path.enter().append("path").attr("class","graph");
-  graph_path.attr("d", function(d){
-    return open_poly_d_fn(d.vertices.slice(1).concat(d.vertices.slice(0,1)));
-  });
 
-  perp_path.exit().remove();
-  perp_path.enter().append("path").attr("class","perp");
-  perp_path.attr("d", function(d){
-    return "M" + d.edge[0] + "L" + d.edge[1];
-  });
-  var fold_dash_map = {
-    "mountain":"10,4,4,4,4,4",
-    "valley": "20,20",
-    "unknown": "5,20",
-  };
-  var fold_color_map = {
-    "ss":{
-      "mountain":"#f00",
-      "valley":"#f80",
-    },
-    "perp":{
-      "mountain":"#00f",
-      "valley":"#08f",
-      "unknown":"#888",
-    },
-  }
   fold_path.exit().remove();
   fold_path.enter().append("path").attr("class","fold");
   fold_path.attr("d", function(d){
       return "M" + d.edge[0] + "L" + d.edge[1];
-    }).attr("stroke-dasharray", function(d){
-      return fold_dash_map[d.type];
-    }).attr("stroke", function(d){
-      return fold_color_map[d.from][d.type];
+    }).classed("mountain", function(d){
+      return d.type == "mountain" && checkboxes.fold;
+    }).classed("valley", function(d){
+      return d.type == "valley" && checkboxes.fold;
+    }).classed("ss", function(d){
+      return d.from == "ss" && checkboxes.ss;
+    }).classed("perp", function(d){
+      return d.from == "perp" && checkboxes.perp;
     });
   
   polygon_verts = polygon_verts.data(polygon);
@@ -365,7 +431,6 @@ function redraw(){
   polygon_verts.enter().append("circle");
   polygon_verts.attr("class","polygon_v")
       .attr("transform", function(d) { return "translate(" + d + ")"; })
-      .attr("r", 6)
       .call(dragpoly).call(click_to_remove,polygon,3);
 }
 
