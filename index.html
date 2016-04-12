@@ -40,6 +40,9 @@ body {
   height: 100%;
   overflow: scroll;
 }
+#info p {
+  text-align:justify;
+}
 #infopanel {
   margin: 20px 20px 20px 0;
 }
@@ -184,7 +187,7 @@ table.legend {
 <div id="displays">
 <div id="c1c">
   <div class="panel panel-default"id="c1c2">
-    <div class="helptext">Drag vertices to deform polygon. Shift-drag an existing vertex to create a new vertex. Click on a vertex to remove it.</div>
+    <div class="helptext">Drag vertices to deform polygon. Shift-drag an existing vertex to create a new vertex. Click on a vertex to remove it.<br>You can print this page, and the polygon will resize to fit the paper.</div>
     <svg id="c1" class="panel-body"  viewBox="0 0 800 800" preserveAspectRatio="xMidYMid meet">
       <rect id="vertex-bounds" class="viewbounds" x="44" y="44" width="712" height="712"></rect>
     </svg>
@@ -193,7 +196,7 @@ table.legend {
   <div id="info"><div id="infopanel" class="panel panel-default">
     <div class="panel-body">
       <h1>One-Cut Helper</h1>
-      <h4>By <strong><a href="http://www.hexahedria.com">Daniel Johnson</a></strong>, <strong><a href="https://github.com/URJudged">Judge Lee</a></strong>, and <strong><a href="https://github.com/jwarley">Jackson Warley</a></strong>.</h4>
+      <h5>By <strong><a href="http://www.hexahedria.com">Daniel Johnson</a></strong>, <strong><a href="https://github.com/URJudged">Judge Lee</a></strong>, and <strong><a href="https://github.com/jwarley">Jackson Warley</a></strong>.</h5>
       <p>The <a href="https://en.wikipedia.org/wiki/Fold-and-cut_theorem">Fold-and-Cut Theorem</a> allows any polygon to be cut from a single sheet of paper by folding it flat and making a single straight complete cut.  The polygon is folded along its <a href="https://en.wikipedia.org/wiki/Straight_skeleton">straight skeleton</a> and some perpendiculars, endowed with mountain and valley information, enabling the boundary of the polygon to fall on a line.</p>
 
       <div class="separator"></div>
@@ -221,15 +224,6 @@ table.legend {
         </table>
       </div>
       <div class="separator"></div>
-
-      <h3>How to Fold and Cut a Polygon:</h3>
-      <ol>
-      <li>Create your polygon on the left.</li>
-      <li>Print out this page!</li>
-      <li>Crease the mountain folds and valley folds.</li>
-      <li>Fold along the lines. The cut edges should all line up. If folding is difficult, it can be helpful to identify <em>corridors</em>, which are constant-width regions bounded by perpendiculars. In most cases, each corridor will be foldable into a single fan-like column, called an <em>accordion</em>.</li>
-      <li>Make your cut!</li>
-      </ol>
 
       <p class="footer">This project was inspired by the Discrete and Computational Geometry course taught at Harvey Mudd College by <a href="http://satyandevadoss.org/">Professor Satyan Devadoss</a>.</p>
     </div>
