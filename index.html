@@ -48,6 +48,10 @@ body {
   margin-bottom:10px;
   border-bottom: 1px solid #eee;
 }
+.footer {
+  color: gray;
+  font-style: italic;
+}
 
 .helptext {
   font-family:sans-serif;
@@ -189,10 +193,8 @@ table.legend {
   <div id="info"><div id="infopanel" class="panel panel-default">
     <div class="panel-body">
       <h1>One-Cut Helper</h1>
-      <h4>A project by <strong>Daniel Johnson</strong>, <strong>Judge Lee</strong>, and <strong>Jackson Warley</strong>.</h4>
-      <p>The one-cut theorem, proved by Erik D. Demaine, Martin L. Demaine, and Anna Lubiw, statest that any plane graph of cuts can be formed by folding a sheet of paper and then making a single cut. This folding is based on the straight-skeleton of the plane graph.</p>
-
-      <p>The straight skeleton is defined by continuously shifting the edges of the polygon inward and tracing the paths formed by the vertices. To enable this to be folded, perpendiculars are added to the graph. These perpendiculars start at vertices of the straight skeleton and then trace out lines perpendicular to the cut edges.</p>
+      <h4>By <strong><a href="http://www.hexahedria.com">Daniel Johnson</a></strong>, <strong><a href="https://github.com/URJudged">Judge Lee</a></strong>, and <strong><a href="https://github.com/jwarley">Jackson Warley</a></strong>.</h4>
+      <p>The <a href="https://en.wikipedia.org/wiki/Fold-and-cut_theorem">Fold-and-Cut Theorem</a> allows any polygon to be cut from a single sheet of paper by folding it flat and making a single straight complete cut.  The polygon is folded along its <a href="https://en.wikipedia.org/wiki/Straight_skeleton">straight skeleton</a> and some perpendiculars, endowed with mountain and valley information, enabling the boundary of the polygon to fall on a line.</p>
 
       <div class="separator"></div>
       <div class="checkbox">
@@ -225,9 +227,11 @@ table.legend {
       <li>Create your polygon on the left.</li>
       <li>Print out this page!</li>
       <li>Crease the mountain folds and valley folds.</li>
-      <li>Fold along the lines. The cut edges should all line up. If folding is difficult, it can be helpful to identify <em>corridors</em>, which are constant-width regions bounded by perpendiculars (blue). In most cases, each corridor will be foldable into a single fan-like column, called an <em>accordion</em>.</li>
+      <li>Fold along the lines. The cut edges should all line up. If folding is difficult, it can be helpful to identify <em>corridors</em>, which are constant-width regions bounded by perpendiculars. In most cases, each corridor will be foldable into a single fan-like column, called an <em>accordion</em>.</li>
       <li>Make your cut!</li>
       </ol>
+
+      <p class="footer">This project was inspired by the Discrete and Computational Geometry course taught at Harvey Mudd College by <a href="http://satyandevadoss.org/">Professor Satyan Devadoss</a>.</p>
     </div>
   </div></div>
 </div>
