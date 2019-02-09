@@ -8,6 +8,11 @@
 body {
   overflow: hidden;
 }
+.panel {
+  border-radius: 10px;
+  border-width: 3px;
+  border-color: black;
+}
 #displays {
   display: flex;
   position:absolute;
@@ -95,8 +100,8 @@ body {
 
 path.polygon {
   stroke: #000;
-  fill: #eee;
-  stroke-width: 5px;
+  fill: #d8cdeb;
+  stroke-width: 7px;
 }
 path.polygon.bad {
   fill: transparent;
@@ -115,7 +120,7 @@ path.perp {
 }
 path.fold {
   fill: transparent;
-  stroke-width: 1.5px;
+  stroke-width: 3px;
   pointer-events:none;
 }
 path.guard_vis {
@@ -139,11 +144,11 @@ path.perp {
 
 circle.polygon_v {
   fill: #000;
-  r: 6;
+  r: 9;
 }
 .viewbounds {
   stroke: #ddd;
-  stroke-width:1px;
+  stroke-width:3px;
   fill: transparent;
 }
 #vertex-bounds{
@@ -160,7 +165,7 @@ table.legend {
   border-collapse: separate;
 }
 .legend path {
-  stroke-width:1px;
+  stroke-width:3px;
 }
 
 @media print {
