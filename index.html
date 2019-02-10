@@ -108,26 +108,15 @@ path.polygon {
 path.polygon.bad {
   fill: transparent;
 }
-path.graph {
-  stroke: #ccc;
-  fill: transparent;
-  stroke-width: 2px;
-  pointer-events:none;
-}
-path.perp {
-  stroke: #ccc;
-  fill: transparent;
-  stroke-width: 2px;
-  pointer-events:none;
-}
 path.fold {
   fill: transparent;
   stroke-width: 3px;
   pointer-events:none;
 }
-path.guard_vis {
-  stroke: transparent;
-  fill: rgba(255,0,0,0.3);
+path.fold.removed {
+  stroke: #eee;
+  fill: transparent;
+  stroke-width: 1px;
   pointer-events:none;
 }
 
@@ -386,8 +375,10 @@ function update(){
   polygon_is_good = check_simple(polygon) && check_clockwise(polygon);
   if(polygon_is_good){
     sskel = build_straight_skeleton(polygon);
+    sskel = deduplicateStraightSkeleton(sskel);
     perps = findPerpendiculars(polygon, sskel);
     folds = assignFolds(polygon, sskel, perps);
+    // markOverlappingFolds(folds);
   }else{
     sskel = null;
     perps = null;
@@ -438,6 +429,8 @@ function redraw(){
       return d.from == "ss" && checkboxes.ss;
     }).classed("perp", function(d){
       return d.from == "perp" && checkboxes.perp;
+    }).classed("removed", function(d){
+      return d.removed === true;
     });
   
   polygon_verts = polygon_verts.data(polygon);

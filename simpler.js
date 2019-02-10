@@ -682,50 +682,35 @@ function assignFolds(poly, ss, perps) {
             }
         }
 
-        // degree 4 => 3 mountains, 1 valley
-        // degree 6 => 4 mountains, 2 valleys
-        if (mcount === 3 && vcount < 2) {
-            folds.push({type:"valley", from:"perp", above:(cur_perp[0].face < poly.length), edge:cur_perp[0].edge});
+        // Hypothesis: one must exceed the other by exactly 2
+        // Since we know we will end up with an even number of edges, we can just try
+        // to move toward one exceeding the other by exactly 2, and pick arbitrarily if
+        // that is ambiguous
+        // 
+        var type;
+        var m_minus_v = mcount - vcount;
+        if (m_minus_v > 2) {
+            // Too many mountains
+            type = "valley";
+        } else if (m_minus_v < -2) {
+            // Too many valleys
+            type = "mountain";
+        } else if (m_minus_v == 1) {
+            // One more mountain than valley. Add another mountain to make it 2
+            type = "mountain";
+        } else if (m_minus_v == -1) {
+            // One more valley than mountain. Add another valley to make it 2
+            type = "valley";
+        } else {
+            // If we get to this case, either:
+            //  a) we are already at a difference of 2, at which point either is bad, or
+            //  b) we are at a difference of 0, at which either is good.
+            // Since most straight skeleton folds are mountain, we choose valley
+            // type = p % 2 == 0 ? "valley" : "mountain";
+            type = "valley";
         }
-        // degree 6 => 4 mountains, 2 valleys
-        else if (mcount === 3 && vcount === 2) {
-            folds.push({type:"mountain", from:"perp", above:(cur_perp[0].face < poly.length), edge:cur_perp[0].edge});
-        }
-        // degree 4 => 3 valleys, 1 mountain
-        // degree 6 => 4 valleys, 2 mountains
-        else if (vcount === 3 && mcount < 2) {
-            folds.push({type:"mountain", from:"perp", above:(cur_perp[0].face < poly.length), edge:cur_perp[0].edge});
-        }
-        // degree 6 => 4 valleys, 2 mountains
-        else if (vcount === 3 && mcount === 2) {
-            folds.push({type:"valley", from:"perp", above:(cur_perp[0].face < poly.length), edge:cur_perp[0].edge});
-        }
-        // degree 6 => 4 mountains, 2 valleys (chosen)
-        else if (mcount === 2 && vcount === 2) {
-            folds.push({type:"mountain", from:"perp", above:(cur_perp[0].face < poly.length), edge:cur_perp[0].edge});
-        }
-        // degree 6 => 4 mountains, 2 valleys
-        else if (mcount === 4) {
-            folds.push({type:"valley", from:"perp", above:(cur_perp[0].face < poly.length), edge:cur_perp[0].edge});
-        }
-        // degree 6 => 4 valleys, 2 mountains
-        else if (vcount === 4) {
-            folds.push({type:"mountain", from:"perp", above:(cur_perp[0].face < poly.length), edge:cur_perp[0].edge});
-        }
-        // degree 4 => 3 mountains, 1 valley (chosen)
-        // degree 6 => 4 mountains, 2 valleys
-        else if (mcount === 2 && vcount === 1) {
-            folds.push({type:"mountain", from:"perp", above:(cur_perp[0].face < poly.length), edge:cur_perp[0].edge});
-        }
-        // degree 4 => 3 valleys, 1 mountain (chosen)
-        // degree 6 => 4 valleys, 2 mountains
-        else if (vcount === 2 && mcount === 1) {
-            folds.push({type:"valley", from:"perp", above:(cur_perp[0].face < poly.length), edge:cur_perp[0].edge});
-        }
-        // shouldn't happen
-        else{
-            folds.push({type:"unknown", from:"perp", above:(cur_perp[0].face < poly.length), edge:cur_perp[0].edge});
-        }
+
+        folds.push({type:type, from:"perp", above:(cur_perp[0].face < poly.length), edge:cur_perp[0].edge});
 
         for (var i = 1; i < cur_perp.length; i++) {
             var newtype = type_swap_map[folds[folds.length-1].type];
@@ -738,6 +723,138 @@ function assignFolds(poly, ss, perps) {
         }
     }
     return folds;
+}
+
+var DEDUPLICATE_DISTANCE_EPSILON = 10;
+function deduplicateStraightSkeleton(faces) {
+    // Make a copy
+    faces = faces.slice(0);
+
+    while(true) {
+        // Find shortest edge
+        var best_face = 0;
+        var best_edge = 0;
+        var best_len = Infinity;
+
+        for (var i = 0; i < faces.length; i++) {
+            var face = faces[i];
+            // Iterate over vertices in that face
+            for (var j = 0; j < face.vertices.length; j++) {
+                var v1 = face.vertices[j];
+                var v2 = face.vertices[(j+1)%face.vertices.length];
+                var len = numeric.norm2(numeric.sub(v2, v1));
+                if (len < best_len) {
+                    best_face = i;
+                    best_edge = j;
+                    best_len = len;
+                }
+            }
+        }
+
+        // Maybe contract the smallest
+        if (best_len >= DEDUPLICATE_DISTANCE_EPSILON) {
+            break;
+        }
+        var face = faces[best_face];
+        var adj_f_idx = face.adjacent_faces[best_edge];
+        var adj = faces[adj_f_idx];
+
+        var v1 = face.vertices[best_edge];
+        var v2 = face.vertices[(best_edge+1)%face.vertices.length];
+        var v_mid = numeric.div(numeric.add(v1, v2), 2);
+
+        if (DEBUG) {
+            console.log("Contracting edge", v1, v2, "between faces", best_face, adj_f_idx);
+        }
+
+        // Update this face
+        face.vertices.splice(best_edge, 1, v_mid);
+        face.vertices.splice((best_edge+1)%face.vertices.length, 1);
+        face.adjacent_faces.splice(best_edge, 1);
+
+        // Update adjacent face to no longer be adjacent
+        var adj_idx;
+        for (var i = 0; i < adj.adjacent_faces.length; i++) {
+            if (best_face == adj.adjacent_faces[i]) {
+                adj_idx = i;
+                break;
+            }
+        }
+        if (adj_idx === null && DEBUG) {
+            console.error("Bad adjacency pair", face, best_face, adj, );
+        }
+        adj.vertices.splice(adj_idx, 1, v_mid);
+        adj.vertices.splice((adj_idx+1)%adj.vertices.length, 1);
+        adj.adjacent_faces.splice(adj_idx, 1);
+
+        // Update all other faces
+        for (var i = 0; i < faces.length; i++) {
+            var other_face = faces[i];
+            // Iterate over vertices in that face
+            for (var j = 0; j < other_face.vertices.length; j++) {
+                var v_other = other_face.vertices[j];
+                if(arrayEq(v1, v_other) || arrayEq(v2, v_other)) {
+                    // Move the vertex
+                    other_face.vertices.splice(j, 1, v_mid);
+                }
+            }
+        }
+    }
+
+    return faces;
+}
+
+function markOverlappingFolds(folds) {
+    // Look for folds that are close and of opposite directionality, and mark them
+
+    var type_cancel_map = {
+        "mountain":"valley",
+        "valley":"mountain",
+    }
+
+    for (var i = 0; i < folds.length; i++) {
+        var f1 = folds[i];
+        if (f1.removed) {
+            continue;
+        }
+        console.log("CHecking", i);
+        for (var j = i + 1; j < folds.length; j++) {
+            var f2 = folds[j];
+            if (f1.removed || f2.removed) {
+                continue;
+            }
+            if (type_cancel_map[f1.type] == f2.type) {
+                // Opposite types
+                // Check if edges are close
+                var vec1 = numeric.sub(f1.edge[1], f1.edge[0]);
+                var vec2 = numeric.sub(f2.edge[1], f2.edge[0]);
+                var cos_sim = scalar_project(to_unit(vec1), vec2);
+                if (cos_sim > 1-DEDUPLICATE_ANGLE_EPSILON) {
+                    // Parallel
+                    var snap_error = (
+                        numeric.norm2(numeric.sub(f1.edge[0], f2.edge[0]))
+                        + numeric.norm2(numeric.sub(f1.edge[1], f2.edge[1]))
+                    );
+                    if (snap_error < DEDUPLICATE_DISTANCE_EPSILON) {
+                        console.log("Removing pair", i, j);
+                        f1.removed = true;
+                        f2.removed = true;
+                    }
+                } else if (cos_sim < -(1-DEDUPLICATE_ANGLE_EPSILON)) {
+                    // Antiparallel
+                    var snap_error = (
+                        numeric.norm2(numeric.sub(f1.edge[0], f2.edge[1]))
+                        + numeric.norm2(numeric.sub(f1.edge[1], f2.edge[0]))
+                    );
+                    if (snap_error < DEDUPLICATE_DISTANCE_EPSILON) {
+                        console.log("Removing pair", i, j);
+                        f1.removed = true;
+                        f2.removed = true;
+                    }
+                }
+            }
+        }
+    }
 }
 
 function arrayEq(ar0, ar1) {
