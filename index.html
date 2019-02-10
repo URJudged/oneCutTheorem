@@ -12,6 +12,7 @@ body {
   border-radius: 10px;
   border-width: 3px;
   border-color: black;
+  background-color: #fffdf2;
 }
 #displays {
   display: flex;
@@ -51,11 +52,12 @@ body {
 }
 #infopanel {
   margin: 20px 20px 20px 0;
+  background-color: #fff7bd;
 }
 .separator {
   margin-top:10px;
   margin-bottom:10px;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid #000;
 }
 .footer {
   color: gray;
@@ -205,6 +207,8 @@ table.legend {
       <h5>By <strong><a href="http://www.hexahedria.com">Daniel Johnson</a></strong>, <strong><a href="https://github.com/URJudged">Judge Lee</a></strong>, and <strong><a href="https://github.com/jwarley">Jackson Warley</a></strong>.</h5>
       <p>The <a href="https://en.wikipedia.org/wiki/Fold-and-cut_theorem">Fold-and-Cut Theorem</a> allows any polygon to be cut from a single sheet of paper by folding it flat and making a single straight complete cut.  The polygon is folded along its <a href="https://en.wikipedia.org/wiki/Straight_skeleton">straight skeleton</a> and some perpendiculars, endowed with mountain and valley information, enabling the boundary of the polygon to fall on a line.</p>
 
+      <button id="printbutton" type="button" class="btn btn-primary">Print for folding and cutting</button>
+
       <div class="separator"></div>
       <div class="checkbox">
         <label>
@@ -329,6 +333,12 @@ function check_checkbox_state(){
 document.getElementById("ss_check").addEventListener("change", check_checkbox_state);
 document.getElementById("perp_check").addEventListener("change", check_checkbox_state);
 document.getElementById("fold_check").addEventListener("change", check_checkbox_state);
+
+function do_print(){
+  // Print this page
+  window.print();
+}
+document.getElementById("printbutton").addEventListener("mouseup", do_print);
 
 var svg = d3.select("#c1");
 
